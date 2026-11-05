@@ -223,7 +223,9 @@ class ShipmentExceptionAgent:
             f"chat {self._llm.model}",
             attributes={"gen_ai.operation.name": "chat", "gen_ai.request.model": self._llm.model},
         ) as span:
-            reply = self._llm.chat(messages, self._tools)
+            # The wall-clock budget is a hard deadline: the call gets only the time left.
+            remaining = self._budget.max_wall_s - run.elapsed()
+            reply = self._llm.chat(messages, self._tools, timeout_s=remaining)
             u = reply.usage
             span.set_attribute("gen_ai.usage.input_tokens", u.prompt_tokens)
             span.set_attribute("gen_ai.usage.output_tokens", u.completion_tokens)

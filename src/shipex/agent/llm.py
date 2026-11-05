@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -70,7 +70,14 @@ class ChatReply:
 class ChatModel(Protocol):
     model: str
 
-    def chat(self, messages: Sequence[Message], tools: Sequence[Message]) -> ChatReply: ...
+    def chat(
+        self,
+        messages: Sequence[Message],
+        tools: Sequence[Message],
+        timeout_s: float | None = None,
+    ) -> ChatReply:
+        """`timeout_s` is a hard deadline for the whole call, retries included."""
+        ...
 
 
 def cost_from_usage(model: str, usage: dict[str, Any]) -> float:
@@ -108,16 +115,35 @@ class OpenRouterChat:
         max_attempts: int = 3,
         client: httpx.Client | None = None,
         retry_base_delay: float = 0.5,
+        clock: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         if not api_key:
             raise ValueError("OPENROUTER_API_KEY is required for the live agent")
         self.model = model
+        self._timeout_s = timeout_s
         self._max_attempts = max_attempts
         self._retry_base_delay = retry_base_delay
+        self._clock = clock
+        self._sleep = sleep
         self._client = client or httpx.Client(base_url=base_url, timeout=timeout_s)
         self._headers = {"Authorization": f"Bearer {api_key}"}
 
-    def chat(self, messages: Sequence[Message], tools: Sequence[Message]) -> ChatReply:
+    def chat(
+        self,
+        messages: Sequence[Message],
+        tools: Sequence[Message],
+        timeout_s: float | None = None,
+    ) -> ChatReply:
+        # One deadline for the whole call: each attempt's HTTP timeout, the backoff sleeps
+        # and the decision to retry are all bounded by the time that is left.
+        deadline = self._clock() + (self._timeout_s if timeout_s is None else timeout_s)
+
+        def remaining() -> float:
+            return deadline - self._clock()
+
+        if remaining() <= 0:
+            raise LLMError("deadline exceeded before the call started")
         payload: dict[str, Any] = {
             "model": self.model,
             "messages": list(messages),
@@ -128,7 +154,12 @@ class OpenRouterChat:
         }
 
         def post() -> dict[str, Any]:
-            resp = self._client.post("/chat/completions", json=payload, headers=self._headers)
+            budget = min(self._timeout_s, remaining())
+            if budget <= 0:
+                raise httpx.TimeoutException("deadline exceeded")
+            resp = self._client.post(
+                "/chat/completions", json=payload, headers=self._headers, timeout=budget
+            )
             resp.raise_for_status()
             data: dict[str, Any] = resp.json()
             return data
@@ -136,10 +167,11 @@ class OpenRouterChat:
         try:
             data = call_with_retry(
                 post,
-                is_retryable=_is_retryable,
+                is_retryable=lambda exc: _is_retryable(exc) and remaining() > 1.0,
                 retry_after=_retry_after,
                 max_attempts=self._max_attempts,
                 base_delay=self._retry_base_delay,
+                sleep=lambda delay: self._sleep(max(0.0, min(delay, remaining() - 1.0))),
             )
         except (httpx.HTTPError, ValueError) as exc:
             raise LLMError(f"{type(exc).__name__}: {exc}") from exc
@@ -177,7 +209,12 @@ class UnavailableChat:
         self.model = model
         self._reason = reason
 
-    def chat(self, messages: Sequence[Message], tools: Sequence[Message]) -> ChatReply:
+    def chat(
+        self,
+        messages: Sequence[Message],
+        tools: Sequence[Message],
+        timeout_s: float | None = None,
+    ) -> ChatReply:
         raise LLMError(self._reason)
 
 
@@ -208,9 +245,16 @@ class ScriptedChat:
         self._usage = usage or SCRIPTED_USAGE
         self._latency_s = latency_s
         self.seen: list[list[Message]] = []
+        self.timeouts: list[float | None] = []
 
-    def chat(self, messages: Sequence[Message], tools: Sequence[Message]) -> ChatReply:
+    def chat(
+        self,
+        messages: Sequence[Message],
+        tools: Sequence[Message],
+        timeout_s: float | None = None,
+    ) -> ChatReply:
         self.seen.append(list(messages))
+        self.timeouts.append(timeout_s)
         if self._latency_s:
             time.sleep(self._latency_s)
         if not self._turns:

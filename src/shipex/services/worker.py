@@ -72,13 +72,20 @@ def main(argv: Sequence[str] | None = None) -> None:
         raise SystemExit(f"usage: python -m shipex.services.worker {{{','.join(SUBSCRIPTIONS)}}}")
     role = args[0]
     settings = Settings()
+    if role == "agent":
+        settings.check_poll_interval()
     telemetry.configure(f"shipex-{role}")
     ensure_topics(settings.kafka_bootstrap, list(Topic), settings.topic_partitions)
 
     conn = psycopg.connect(settings.database_url)
     runner = ConsumerRunner(
         role,
-        KafkaSubscriber(settings.kafka_bootstrap, f"shipex-{role}", SUBSCRIPTIONS[role]),
+        KafkaSubscriber(
+            settings.kafka_bootstrap,
+            f"shipex-{role}",
+            SUBSCRIPTIONS[role],
+            max_poll_interval_ms=settings.kafka_max_poll_interval_ms,
+        ),
         KafkaPublisher(settings.kafka_bootstrap),
         build_handler(role, settings, conn),
         PostgresIdempotencyStore(conn),

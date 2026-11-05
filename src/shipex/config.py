@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     carrier_gateway_url: str = "http://localhost:8081"
     metrics_port: int = 9100
     consumer_max_attempts: int = 3
+    kafka_max_poll_interval_ms: int = 600_000
 
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
@@ -47,6 +48,26 @@ class Settings(BaseSettings):
             max_rebook_cost_delta_gbp=self.max_rebook_cost_delta_gbp,
             max_agent_claim_gbp=self.max_agent_claim_gbp,
         )
+
+    def agent_worst_case_s(self) -> float:
+        """Longest one agent record can hold its partition.
+
+        Per attempt: the wall-clock budget (a hard deadline on model calls) plus one final
+        batch of carrier calls (~60s at 5s timeout x 3 retries per call); plus the consumer's
+        retry backoff (capped at 5s) between attempts.
+        """
+        per_attempt = self.agent_max_wall_s + 60.0
+        return self.consumer_max_attempts * (per_attempt + 5.0)
+
+    def check_poll_interval(self) -> None:
+        """Refuse to start an agent worker the broker would evict mid-record."""
+        worst = self.agent_worst_case_s()
+        if self.kafka_max_poll_interval_ms / 1000 <= worst:
+            raise ValueError(
+                f"KAFKA_MAX_POLL_INTERVAL_MS={self.kafka_max_poll_interval_ms} must exceed the "
+                f"agent's worst case of {worst:.0f}s; raise it or lower AGENT_MAX_WALL_S / "
+                "CONSUMER_MAX_ATTEMPTS"
+            )
 
     def agent_budget(self) -> AgentBudget:
         return AgentBudget(

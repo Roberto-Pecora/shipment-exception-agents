@@ -58,13 +58,22 @@ class KafkaPublisher:
 
 
 class KafkaSubscriber:
-    def __init__(self, bootstrap: str, group: str, topics: Iterable[str]) -> None:
+    def __init__(
+        self,
+        bootstrap: str,
+        group: str,
+        topics: Iterable[str],
+        max_poll_interval_ms: int = 300_000,
+    ) -> None:
+        # If one record takes longer than max.poll.interval.ms, the broker evicts this
+        # consumer and redelivers its partitions; the worker sets it above its worst case.
         self._consumer = Consumer(
             {
                 "bootstrap.servers": bootstrap,
                 "group.id": group,
                 "enable.auto.commit": False,
                 "auto.offset.reset": "earliest",
+                "max.poll.interval.ms": max_poll_interval_ms,
             }
         )
         self._consumer.subscribe(list(topics))

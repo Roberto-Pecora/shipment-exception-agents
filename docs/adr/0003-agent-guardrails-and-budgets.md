@@ -19,7 +19,10 @@ reads untrusted carrier free text. Prompt instructions alone are not a control.
   successful action; temperature-controlled goods may only be escalated. Blocked calls
   are returned to the model with the reason. The last rule moved from the prompt into code
   after a smaller model ignored the prompt version in a live run.
-- **Budgets**: max model calls, max spend, max wall time, max invalid calls. A breach, an
+- **Budgets**: max model calls, max spend, max wall time, max invalid calls. Wall time is a
+  hard deadline handed to each model call (timeouts, retries and backoff all fit inside it),
+  and Kafka's `max.poll.interval.ms` is checked against the resulting worst case at worker
+  start, so a stalled provider cannot get the consumer evicted mid-record. A breach, an
   LLM outage or an explicit `escalate_to_human` all end the run as `CaseEscalated`.
   Every run ends in exactly one event — never an exception, never silence.
 

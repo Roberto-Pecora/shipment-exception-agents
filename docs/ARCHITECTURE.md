@@ -160,7 +160,10 @@ ExceptionRouted ─► ShipmentExceptionAgent.run
   is accepted only if backed by the matching successful action; temperature-controlled
   goods may only be read and escalated (rebook, claim, customs and resolve are blocked).
 - **Budgets** (`AgentBudget`): 8 model calls, $0.05, 90 s, 3 invalid calls (defaults, all
-  configurable). A breach, an LLM outage, or the model's own `escalate_to_human` all
+  configurable). The wall-clock budget is a hard deadline: each model call receives only the
+  time left, which bounds its HTTP timeout, its retries and its backoff sleeps. The agent
+  worker sets Kafka's `max.poll.interval.ms` (default 600 s) and refuses to start if that is
+  not above its worst case per record, so a slow run cannot get the consumer evicted. A breach, an LLM outage, or the model's own `escalate_to_human` all
   produce `CaseEscalated`, carrying any actions already taken.
 - **LLM client** (`llm.py`): `OpenRouterChat` over an OpenAI-compatible endpoint, with
   native function calling, retry on 408/409/425/429/5xx (Retry-After honoured), and token
