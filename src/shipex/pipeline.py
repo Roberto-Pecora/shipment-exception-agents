@@ -20,6 +20,7 @@ from shipex.handlers import (
 from shipex.routing.rules import RoutingPolicy
 from shipex.store.idempotency import InMemoryIdempotencyStore
 from shipex.store.outbox import InMemoryOutbox
+from shipex.store.outcomes import InMemoryOutcomeStore
 
 
 class InProcessPipeline:
@@ -34,10 +35,11 @@ class InProcessPipeline:
         self.bus = InMemoryBus()
         self.outbox = InMemoryOutbox()
         self.idempotency = InMemoryIdempotencyStore()
+        self.outcomes = InMemoryOutcomeStore()
         handlers: dict[str, Handler] = {
             "router": router_handler(policy, agent_only=agent_only),
             "playbook": playbook_handler(),
-            "agent": agent_handler(agent),
+            "agent": agent_handler(agent, self.outcomes),
             "notifier": notifier_handler(self.outbox),
         }
         self.runners = [

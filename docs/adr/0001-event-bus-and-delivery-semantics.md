@@ -19,6 +19,10 @@ and fail independently, and no exception may be silently lost.
   publish and commit re-emits *identical* ids that the next consumer dedupes.
 - **Side effects carry idempotency keys** (`<case_id>:rebook`), enforced by the
   carrier-gateway, so a replayed agent run cannot rebook twice.
+- **Agent outcomes are stored per case** (`agent_outcomes`, first writer wins). Keys only
+  dedupe the *same* action; a re-run agent may choose a different one. A redelivered case
+  republishes its stored outcome instead of calling the model again. The remaining window
+  is a crash *during* a run, before its outcome is stored.
 - **Bounded in-process retries, then DLQ.** Transient errors retry with jittered
   exponential backoff (default 3 attempts); permanent errors and poison records go
   straight to `<topic>.dlq` with the error, attempt count and source offset in headers.

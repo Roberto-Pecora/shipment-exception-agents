@@ -25,6 +25,7 @@ from shipex.contracts.events import (
 from shipex.playbooks import PLAYBOOKS
 from shipex.routing.rules import RoutingPolicy, route
 from shipex.store.outbox import Notification, Outbox
+from shipex.store.outcomes import OutcomeStore, StoredOutcome
 
 SUBSCRIPTIONS: dict[str, tuple[Topic, ...]] = {
     "router": (Topic.SHIPMENT_EVENTS,),
@@ -79,12 +80,26 @@ def playbook_handler() -> Handler:
     return handle
 
 
-def agent_handler(agent: ShipmentExceptionAgent) -> Handler:
+def agent_handler(agent: ShipmentExceptionAgent, outcomes: OutcomeStore) -> Handler:
+    """Runs the agent at most once per case to completion; redeliveries reuse the outcome."""
+
     def handle(env: Envelope) -> Sequence[Outgoing]:
         case = env.parse(ExceptionRouted)
-        event = agent.run(case).to_event(case)
-        topic = Topic.RESOLUTIONS if isinstance(event, CaseResolved) else Topic.ESCALATIONS
-        return [Outgoing(topic, env.derive(event, salt="resolve"))]
+        stored = outcomes.get(case.case_id)
+        if stored is None:
+            event = agent.run(case).to_event(case)
+            stored = outcomes.put_if_absent(
+                case.case_id, StoredOutcome(type(event).__name__, event.model_dump_json())
+            )
+        else:
+            telemetry.AGENT_OUTCOMES.labels("reused").inc()
+        final: CaseResolved | CaseEscalated = (
+            CaseResolved.model_validate_json(stored.payload_json)
+            if stored.event_type == "CaseResolved"
+            else CaseEscalated.model_validate_json(stored.payload_json)
+        )
+        topic = Topic.RESOLUTIONS if isinstance(final, CaseResolved) else Topic.ESCALATIONS
+        return [Outgoing(topic, env.derive(final, salt="resolve"))]
 
     return handle
 

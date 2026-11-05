@@ -47,7 +47,7 @@ Each topic has a `<topic>.dlq`. Every consumer: idempotent, commit-after-publish
 | `ingest-api` | FastAPI (`services/ingest_api.py`) | HTTP | `shipment.events.v1` | `processed_events` |
 | `router` | worker (`services/worker.py router`) | `shipment.events.v1` | playbook queue, agent queue, `escalations.v1` | `processed_events` |
 | `playbook` | worker | `exceptions.playbook.v1` | `resolutions.v1` | `processed_events` |
-| `agent` | worker | `exceptions.agent.v1` | `resolutions.v1`, `escalations.v1` | `processed_events` |
+| `agent` | worker | `exceptions.agent.v1` | `resolutions.v1`, `escalations.v1` | `processed_events`, `agent_outcomes` |
 | `notifier` | worker | `resolutions.v1`, `escalations.v1` | none (writes outbox) | `notification_outbox` |
 | `carrier-gateway` | Node/Fastify (`services/carrier-gateway`) | HTTP from `agent` | none | in-memory (demo) |
 
@@ -105,6 +105,10 @@ What this guarantees:
   committed so the partition keeps flowing.
 - **Side effects are outside this guarantee**, so they carry their own idempotency keys
   (section 7).
+- **An agent case runs to completion at most once.** Replaying a record would re-run the
+  agent, and a second run can pick a *different* action that no idempotency key catches.
+  The first finished outcome is stored under `case_id` (`agent_outcomes`, first writer
+  wins) and every redelivery republishes it without calling the model.
 
 Kafka specifics (`bus/kafka.py`): idempotent producer with `acks=all`; consumer with
 auto-commit off and explicit synchronous commits. The `Publisher` and `Subscriber`
@@ -200,6 +204,8 @@ Postgres holds two tables, created on startup:
 
 - `processed_events(consumer, event_id, processed_at)` — the idempotency ledger, primary
   key `(consumer, event_id)`.
+- `agent_outcomes(case_id, event_type, payload, created_at)` — the first finished agent
+  outcome per case, republished on redelivery.
 - `notification_outbox(notification_id, case_id, shipment_id, channel, body, created_at)` —
   `notification_id` is `<case_id>:customer` or `<case_id>:ops`, so a repeated insert is a
   no-op (`ON CONFLICT DO NOTHING`).
@@ -251,6 +257,10 @@ run in CI.
 - **Ledger/publish window:** a crash between `flush` and `mark` replays a record. This is
   safe only because ids are deterministic and side effects are keyed; a new side effect
   without an idempotency key would break the guarantee.
+- **Crash during an agent run:** the outcome is stored only when the run finishes, so a
+  worker killed mid-run re-runs the agent. Repeats of the same action are absorbed by
+  idempotency keys; a different action on the second run is still possible in that window.
+  Journalling each action as it executes would close it.
 - **Single Postgres** serves the ledger and outbox; per-service stores would be the
   production shape.
 - **carrier-gateway state is in memory** and lost on restart; it is a fixture-backed stand-in.

@@ -86,9 +86,24 @@ def test_resubmitted_event_is_processed_once(carrier: InMemoryCarrier) -> None:
     assert len(carrier.side_effects) == 1
 
 
-def test_agent_redelivery_does_not_rebook_twice(carrier: InMemoryCarrier) -> None:
-    """Agent worker 'crashes' after rebooking; the replayed run reuses the idempotency key."""
-    p = pipeline(carrier, list(REBOOK_SCRIPT) + list(REBOOK_SCRIPT))
+CLAIM_INSTEAD = [
+    ScriptedTurn(tool_calls=(("open_damage_claim", {"shipment_id": SID, "amount_gbp": 300}),)),
+    ScriptedTurn(
+        tool_calls=(
+            (
+                "resolve_case",
+                {"resolution_code": "CLAIM_OPENED", "customer_message": "We opened a claim."},
+            ),
+        )
+    ),
+]
+
+
+def test_agent_redelivery_reuses_the_first_outcome(carrier: InMemoryCarrier) -> None:
+    """Worker 'crashes' after the run but before committing. The redelivered case must not
+    re-run the agent: here a second run would choose a *different* action (a claim)."""
+    llm = ScriptedChat(list(REBOOK_SCRIPT) + CLAIM_INSTEAD)
+    p = InProcessPipeline(ShipmentExceptionAgent(llm, carrier))
     p.submit(make_event(delay_hours=72.0))
     router, _playbook, agent, _notifier = p.runners
     router.run_once(0)
@@ -99,9 +114,12 @@ def test_agent_redelivery_does_not_rebook_twice(carrier: InMemoryCarrier) -> Non
     p.idempotency._seen.discard(("agent", envelope.event_id))
     agent.process(record)  # redelivery after a crash before the ledger write
     p.drain()
+
     case_id = envelope.parse(ExceptionRouted).case_id
     assert carrier.side_effects == [("rebook", f"{case_id}:rebook")]
-    assert len(p.outbox.list()) == 1  # the replayed resolution has the same event id
+    assert len(llm.seen) == len(REBOOK_SCRIPT)  # the model was not called again
+    [note] = p.outbox.list()
+    assert "air express" in note.body
 
 
 def test_ingest_api_dedupes_and_validates() -> None:

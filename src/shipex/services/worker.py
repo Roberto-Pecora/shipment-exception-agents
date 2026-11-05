@@ -30,6 +30,7 @@ from shipex.handlers import (
 )
 from shipex.store.idempotency import PostgresIdempotencyStore
 from shipex.store.outbox import PostgresOutbox
+from shipex.store.outcomes import PostgresOutcomeStore
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ def build_handler(
             settings.agent_budget(),
             settings.guardrail_policy(),
         )
-        return agent_handler(agent)
+        return agent_handler(agent, PostgresOutcomeStore(conn))
     if role == "notifier":
         return notifier_handler(PostgresOutbox(conn))
     raise SystemExit(f"unknown role {role!r}; expected one of {sorted(SUBSCRIPTIONS)}")
