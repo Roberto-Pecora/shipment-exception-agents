@@ -59,8 +59,9 @@ def router_handler(
                         route=Route.HUMAN,
                         rule_id="concurrent_case",
                         reason=(
-                            f"shipment already has open case {open_case}; a second "
-                            f"{event.status_code.value} exception needs a human"
+                            f"shipment already has case {open_case.case_id} "
+                            f"({'held by ops' if open_case.status == 'held' else 'in progress'}"
+                            f"); a further {event.status_code.value} exception needs a human"
                         ),
                     )
             span.set_attribute("shipex.route", decision.route.value)
@@ -189,7 +190,11 @@ def interrupted_run(case: ExceptionRouted, started: Sequence[JournalEntry]) -> C
 
 
 def notifier_handler(outbox: Outbox, cases: CaseRegistry) -> Handler:
-    """Writes the final message for a case, then closes the case for its shipment."""
+    """Writes the final message for a case, then settles the case for its shipment.
+
+    Resolved: the case is closed. Escalated: the case is held for ops; it stays open, and
+    keeps further exceptions for that shipment with humans, until released via ops-api.
+    """
 
     def handle(env: Envelope) -> Sequence[Outgoing]:
         if env.event_type == "CaseResolved":
@@ -215,7 +220,7 @@ def notifier_handler(outbox: Outbox, cases: CaseRegistry) -> Handler:
                     f"Escalated by {e.source}: {e.reason}",
                 )
             )
-            cases.close(e.case_id)
+            cases.hold(e.case_id, e.reason)
         else:
             raise PermanentError(f"notifier cannot handle {env.event_type}")
         return []

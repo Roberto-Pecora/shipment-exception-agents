@@ -28,6 +28,9 @@ carrier webhook ─► ingest-api (FastAPI) ─► shipment.events.v1 ─► rou
                     escalations.v1 ◄────────┴──── resolutions.v1 ◄─────────────────┘
                                          ▼
                                  notifier ─► notification outbox (Postgres)
+                                    │ resolved: close case · escalated: hold for ops
+                                    ▼
+                                 ops-api ── a person releases held cases
 
 every consumer: commit after publish · idempotent by event id · retries → <topic>.dlq
 traceparent in Kafka headers → one trace in Jaeger · Prometheus metrics per service
@@ -51,7 +54,8 @@ high-risk cases go to a human by rule (ADR 0002).
 | `playbook` | Python | Deterministic pipelines: re-ETA notify, address confirmation, auto-claim (filed with the carrier-gateway). |
 | `agent` | Python | Bounded tool-calling loop via OpenRouter; guardrails and budgets; always emits resolved or escalated. |
 | `carrier-gateway` | TypeScript / Fastify + zod | Tracking, rebooking options, rebook, customs-document requests, claims. Idempotency keys enforced; fault injection. |
-| `notifier` | Python | Writes customer messages and ops tickets to an idempotent outbox. |
+| `notifier` | Python | Writes customer messages and ops tickets to an idempotent outbox; closes resolved cases and holds escalated ones for ops. |
+| `ops-api` | Python / FastAPI | Shows a shipment's open or held case and lets a person release a held case back to automation. |
 
 Infra: Redpanda (Kafka API), Postgres, Jaeger, Prometheus, all in `docker-compose.yml`.
 
@@ -129,10 +133,11 @@ Full table: [`evals/results/offline.md`](evals/results/offline.md).
 real model, comparing the hybrid router with an agent-only baseline on outcome accuracy,
 policy violations, model calls, cost and latency.
 
-This run predates six hardening changes made after a design review (hard model-call
-deadline, stored agent outcomes, one case per shipment, a high-value guardrail, ingest
-conflict detection, claims filed through the gateway); those are verified by tests and the
-offline gate, not by a repeat live run.
+This run predates eight hardening changes made after a design review (hard model-call
+deadline, stored agent outcomes, a write-ahead action journal, one case per shipment,
+escalated cases held for ops, a high-value guardrail, ingest conflict detection, claims
+filed through the gateway); those are verified by tests and the offline gate, not by a
+repeat live run.
 
 One model, `moonshotai/kimi-k3.1-pro` via OpenRouter: 30 scenarios (the two scripted-only
 failure cases are offline-only), one sample each, temperature 0, per-case budget $0.15
@@ -176,7 +181,7 @@ make install            # Python venv (uv) + gateway node_modules
 make ci                 # lint, mypy --strict, tests, eval gate, failure drills, gateway tests
 
 cp .env.example .env    # optional: OPENROUTER_API_KEY, AGENT_MODEL
-make up                 # Redpanda, Postgres, Jaeger, Prometheus, 6 services
+make up                 # Redpanda, Postgres, Jaeger, Prometheus, 7 services
 make smoke              # posts every scenario twice, waits for exactly one notification each
 ```
 
@@ -204,7 +209,7 @@ docs/ARCHITECTURE.md    system map (services, events, delivery, agent, observabi
 docs/adr/               architecture decisions
 ```
 
-Tests are hermetic (no broker, database, key or network): 92 pytest tests and 10 vitest
+Tests are hermetic (no broker, database, key or network): 94 pytest tests and 10 vitest
 tests. CI runs ruff, `mypy --strict`, pytest with coverage, the offline eval gate, the
 failure drills, gateway typecheck/tests/build, and builds every image. The repo was built
 with **Claude Code**; `CLAUDE.md` holds the rules agents and humans follow here, and

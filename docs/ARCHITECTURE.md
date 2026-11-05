@@ -50,6 +50,7 @@ Each topic has a `<topic>.dlq`. Every consumer: idempotent, commit-after-publish
 | `agent` | worker | `exceptions.agent.v1` | `resolutions.v1`, `escalations.v1` | `processed_events`, `agent_outcomes`, `agent_action_journal` |
 | `notifier` | worker | `resolutions.v1`, `escalations.v1` | none (writes outbox) | `notification_outbox`, `open_cases` |
 | `carrier-gateway` | Node/Fastify (`services/carrier-gateway`) | HTTP from `agent` and `playbook` | none | in-memory (demo) |
+| `ops-api` | FastAPI (`services/ops_api.py`) | HTTP from people | none | `open_cases` |
 
 The four workers are one Python image with the role passed as an argument; each runs in its
 own consumer group (`shipex-<role>`), so each can be scaled and restarted independently.
@@ -139,12 +140,15 @@ Thresholds come from config (`HIGH_VALUE_GBP`, `AUTO_CLAIM_LIMIT_GBP`,
 so it falls through to the agent. Playbooks (`playbooks/`) are pure functions of the routed
 case and cost nothing per run.
 
-**One automated case per shipment.** Before routing an exception to a playbook, the agent or
-a human, the router opens a case for the shipment in `open_cases`; the notifier closes it
-once the case's final event is written. If a case is already open (a DELAYED case still with
-the agent when a DAMAGED event arrives), the new exception is routed to a human with
-`rule_id=concurrent_case` instead of starting a second case that could act in parallel. The
-router consumes each shipment's events in order, so this check needs no locking.
+**One case per shipment.** Before routing an exception to a playbook, the agent or a human,
+the router opens a case for the shipment in `open_cases`. When the case's final event is
+written, the notifier closes it if it was resolved, or puts it on **hold** if it was
+escalated: the shipment now belongs to a person, and stays theirs until they release it with
+`POST /v1/cases/{case_id}/release` on **ops-api** (`GET /v1/shipments/{id}/case` shows the
+current case). Any exception that arrives while a case is open or held (a DAMAGED event while
+a DELAYED case is with the agent, or a new event while ops is working the shipment) is routed
+to a human with `rule_id=concurrent_case`, so automation never acts alongside another case or
+a person. The router consumes each shipment's events in order, so this needs no locking.
 
 ## 6. The agent (`agent/`, ADR 0003)
 
@@ -227,8 +231,9 @@ Postgres holds two tables, created on startup:
   carrier correction, rejected with 409 rather than silently dropped.
 - `processed_events(consumer, event_id, processed_at)` — the idempotency ledger, primary
   key `(consumer, event_id)`.
-- `open_cases(shipment_id, case_id, opened_at)` — at most one open automated case per
-  shipment; opened by the router, closed by the notifier.
+- `open_cases(shipment_id, case_id, status, reason, opened_at)` — at most one case per
+  shipment, `open` (automation) or `held` (escalated, with ops); opened by the router,
+  closed or held by the notifier, released through ops-api.
 - `agent_outcomes(case_id, event_type, payload, created_at)` — the first finished agent
   outcome per case, republished on redelivery.
 - `agent_action_journal(case_id, idempotency_key, kind, params, external_ref, …)` — a
@@ -255,8 +260,8 @@ Every store has an in-memory twin behind the same Protocol.
 
 ## 10. Deployment (`docker-compose.yml`)
 
-Ten containers: Redpanda, Postgres, Jaeger, Prometheus, carrier-gateway, ingest-api and the
-four workers. Topics (and their DLQs) are created on service start with 3 partitions and
+Eleven containers: Redpanda, Postgres, Jaeger, Prometheus, carrier-gateway, ingest-api,
+ops-api and the four workers. Topics (and their DLQs) are created on service start with 3 partitions and
 replication factor 1.
 
 **Scaling model:** records are keyed by `shipment_id` across 3 partitions, so each worker
@@ -291,10 +296,10 @@ run in CI.
   differently. A crash before the first side effect simply re-runs the agent.
 - **Single Postgres** serves the ledger, outbox, case registry and agent outcomes;
   per-service stores would be the production shape.
-- **Escalated cases close when the ops ticket is written.** Automation then treats the
-  shipment as free, so a later exception can open a new automated case while a human is
-  still working the escalated one. A "held by ops" state with an API to release it would
-  close this gap.
+- **Held cases need a person to release them.** A forgotten held case keeps routing that
+  shipment's exceptions to humans indefinitely. There is no timeout or reminder yet; a
+  metric on held-case age would be the first thing to add.
+- **ops-api has no authentication**, like the other HTTP services here.
 - **carrier-gateway state is in memory** and lost on restart; it is a fixture-backed stand-in.
 - **No authentication** on ingest-api or the gateway; the admin endpoint is local-only.
 - **DLQ replay is manual.** There is no automated reprocessing tool.
