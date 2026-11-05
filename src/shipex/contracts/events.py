@@ -149,7 +149,7 @@ class CaseResolved(_Frozen):
 class CaseEscalated(_Frozen):
     case_id: str
     shipment_id: str
-    source: Literal["router", "agent"]
+    source: Literal["router", "agent", "playbook"]
     reason: str
     actions: tuple[Action, ...] = ()
     run: RunStats | None = None

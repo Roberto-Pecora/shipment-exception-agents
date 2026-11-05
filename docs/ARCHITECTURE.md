@@ -49,7 +49,7 @@ Each topic has a `<topic>.dlq`. Every consumer: idempotent, commit-after-publish
 | `playbook` | worker | `exceptions.playbook.v1` | `resolutions.v1` | `processed_events` |
 | `agent` | worker | `exceptions.agent.v1` | `resolutions.v1`, `escalations.v1` | `processed_events`, `agent_outcomes` |
 | `notifier` | worker | `resolutions.v1`, `escalations.v1` | none (writes outbox) | `notification_outbox`, `open_cases` |
-| `carrier-gateway` | Node/Fastify (`services/carrier-gateway`) | HTTP from `agent` | none | in-memory (demo) |
+| `carrier-gateway` | Node/Fastify (`services/carrier-gateway`) | HTTP from `agent` and `playbook` | none | in-memory (demo) |
 
 The four workers are one Python image with the role passed as an argument; each runs in its
 own consumer group (`shipex-<role>`), so each can be scaled and restarted independently.
@@ -198,12 +198,17 @@ A TypeScript/Fastify service, with zod validation, standing in for a carrier int
 | `GET /v1/shipments/:id/rebooking-options` | option ids, new ETA, cost delta |
 | `POST /v1/rebookings` | requires `Idempotency-Key` |
 | `POST /v1/customs-document-requests` | requires `Idempotency-Key` |
+| `POST /v1/claims` | requires `Idempotency-Key`; used by the agent and the auto-claim playbook |
 | `PUT /v1/_admin/shipments/:id` | seed data; only when `ADMIN_ENABLED=true` |
 
 Idempotency: the same key and body replays the original response (`Idempotent-Replayed:
-true`); the same key with a different body is rejected with 422. The agent derives keys as
-`<case_id>:rebook` and `<case_id>:customs_docs`, so a redelivered agent run cannot double
-book. `FAULT_RATE` and `LATENCY_MS` inject 503s (with `Retry-After`) and latency.
+true`); the same key with a different body is rejected with 422. Keys are derived as
+`<case_id>:rebook`, `<case_id>:customs_docs` and `<case_id>:claim`, so a redelivered run
+cannot act twice. Claims go through the gateway from both the agent and the auto-claim
+playbook: playbooks stay pure functions that *decide* on a claim, and the playbook worker
+files it, retrying transient failures and escalating (source `playbook`) if the carrier
+refuses, so a customer is never told about a claim that does not exist.
+`FAULT_RATE` and `LATENCY_MS` inject 503s (with `Retry-After`) and latency.
 
 The Python `HttpCarrierClient` adds a timeout, retry on transient statuses, a circuit
 breaker (5 consecutive failures opens it for 30 s), and injects `traceparent`. Responses are

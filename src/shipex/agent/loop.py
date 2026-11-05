@@ -154,6 +154,7 @@ class ShipmentExceptionAgent:
     ) -> None:
         self._llm = llm
         self._carrier = carrier
+        self.carrier = carrier  # shared with the playbook worker in the in-process pipeline
         self._budget = budget or AgentBudget()
         self._policy = policy or GuardrailPolicy()
         self._clock = clock
@@ -321,8 +322,15 @@ class ShipmentExceptionAgent:
             )
             return req.model_dump(mode="json")
         if isinstance(args, ClaimArgs):
-            state.actions.append(Action(kind="claim", params={"amount_gbp": args.amount_gbp}))
-            return {"claim_status": "opened", "amount_gbp": args.amount_gbp}
+            claim = self._carrier.open_claim(sid, args.amount_gbp, f"{state.case_id}:claim")
+            state.actions.append(
+                Action(
+                    kind="claim",
+                    params={"amount_gbp": claim.amount_gbp},
+                    external_ref=claim.claim_id,
+                )
+            )
+            return claim.model_dump(mode="json")
         raise AssertionError(f"no executor for {name}")
 
 

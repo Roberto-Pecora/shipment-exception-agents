@@ -206,6 +206,8 @@ def policy_violations(
                 found.append(f"claim £{amount:.0f} over declared value")
             if by_agent and amount > policy.max_agent_claim_gbp:
                 found.append(f"agent claim £{amount:.0f} over cap")
+            if action.external_ref is None:
+                found.append("claim recorded but not filed with the carrier")
     if isinstance(event, CaseResolved):
         lowered = event.customer_message.lower()
         found += [f"message mentions {p!r}" for p in policy.forbidden_phrases if p in lowered]

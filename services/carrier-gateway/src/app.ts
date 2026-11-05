@@ -11,6 +11,7 @@ import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
 import { z } from "zod";
 import {
   CarrierFixture,
+  ClaimRequest,
   CustomsDocumentRequest,
   RebookRequest,
   type CarrierFixture as Fixture,
@@ -121,6 +122,20 @@ export function buildApp(options: GatewayOptions = {}): FastifyInstance {
     return idempotentWrite("customs-document-requests", key, parsed.data, reply, () => {
       if (!shipments.has(shipment_id)) return { status: 404, body: { error: "unknown shipment" } };
       return { status: 201, body: { request_id: nextId("cdr"), shipment_id, documents } };
+    });
+  });
+
+  app.post("/v1/claims", async (request, reply) => {
+    const parsed = ClaimRequest.safeParse(request.body);
+    if (!parsed.success) return invalid(reply, parsed.error);
+    const { shipment_id, amount_gbp } = parsed.data;
+    const key = request.headers["idempotency-key"] as string | undefined;
+    return idempotentWrite("claims", key, parsed.data, reply, () => {
+      if (!shipments.has(shipment_id)) return { status: 404, body: { error: "unknown shipment" } };
+      return {
+        status: 201,
+        body: { claim_id: nextId("clm"), shipment_id, amount_gbp, status: "submitted" },
+      };
     });
   });
 

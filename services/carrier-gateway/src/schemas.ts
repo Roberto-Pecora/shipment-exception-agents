@@ -35,6 +35,12 @@ export const CustomsDocumentRequest = z.strictObject({
   documents: z.array(z.string().min(1)).min(1).max(5),
 });
 
+export const ClaimRequest = z.strictObject({
+  shipment_id: z.string().min(1),
+  amount_gbp: z.number().positive(),
+  reason: z.string().max(500).optional(),
+});
+
 export type TrackingInfo = z.infer<typeof TrackingInfo>;
 export type RebookingOption = z.infer<typeof RebookingOption>;
 export type CarrierFixture = z.infer<typeof CarrierFixture>;

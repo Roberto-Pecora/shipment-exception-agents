@@ -64,6 +64,13 @@ class DocumentRequestConfirmation(_Model):
     documents: list[str]
 
 
+class ClaimConfirmation(_Model):
+    claim_id: str
+    shipment_id: str
+    amount_gbp: float
+    status: str
+
+
 class CarrierFixture(_Model):
     """Per-shipment state served by the gateway (same JSON shape in Python and TS)."""
 
@@ -83,6 +90,10 @@ class CarrierClient(Protocol):
     def request_customs_documents(
         self, shipment_id: str, documents: list[str], idempotency_key: str
     ) -> DocumentRequestConfirmation: ...
+
+    def open_claim(
+        self, shipment_id: str, amount_gbp: float, idempotency_key: str
+    ) -> ClaimConfirmation: ...
 
 
 class InMemoryCarrier:
@@ -152,6 +163,25 @@ class InMemoryCarrier:
         )
         self._idempotent[idempotency_key] = confirmation
         self.side_effects.append(("customs_docs", idempotency_key))
+        return confirmation
+
+    def open_claim(
+        self, shipment_id: str, amount_gbp: float, idempotency_key: str
+    ) -> ClaimConfirmation:
+        self._maybe_fail("open_claim")
+        if idempotency_key in self._idempotent:
+            prior = self._idempotent[idempotency_key]
+            assert isinstance(prior, ClaimConfirmation)
+            return prior
+        self._fixture(shipment_id)
+        confirmation = ClaimConfirmation(
+            claim_id=f"clm-{len(self.side_effects) + 1:04d}",
+            shipment_id=shipment_id,
+            amount_gbp=amount_gbp,
+            status="submitted",
+        )
+        self._idempotent[idempotency_key] = confirmation
+        self.side_effects.append(("claim", idempotency_key))
         return confirmation
 
 
@@ -239,3 +269,14 @@ class HttpCarrierClient:
             idempotency_key=idempotency_key,
         )
         return DocumentRequestConfirmation.model_validate(data)
+
+    def open_claim(
+        self, shipment_id: str, amount_gbp: float, idempotency_key: str
+    ) -> ClaimConfirmation:
+        data = self._request(
+            "POST",
+            "/v1/claims",
+            json={"shipment_id": shipment_id, "amount_gbp": amount_gbp},
+            idempotency_key=idempotency_key,
+        )
+        return ClaimConfirmation.model_validate(data)

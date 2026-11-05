@@ -54,7 +54,7 @@ def build_handler(
     if role == "router":
         return router_handler(PostgresCaseRegistry(conn), settings.routing_policy())
     if role == "playbook":
-        return playbook_handler()
+        return playbook_handler(HttpCarrierClient(settings.carrier_gateway_url))
     if role == "agent":
         agent = ShipmentExceptionAgent(
             build_chat_model(settings),

@@ -48,9 +48,9 @@ high-risk cases go to a human by rule (ADR 0002).
 |---|---|---|
 | `ingest-api` | Python / FastAPI | Carrier webhook. Validates against a strict contract, dedupes on the carrier's event id and content, rejects conflicting corrections (409), publishes. |
 | `router` | Python | Policy table → ignore / playbook / agent / human. |
-| `playbook` | Python | Deterministic pipelines: re-ETA notify, address confirmation, auto-claim. |
+| `playbook` | Python | Deterministic pipelines: re-ETA notify, address confirmation, auto-claim (filed with the carrier-gateway). |
 | `agent` | Python | Bounded tool-calling loop via OpenRouter; guardrails and budgets; always emits resolved or escalated. |
-| `carrier-gateway` | TypeScript / Fastify + zod | Tracking, rebooking options, rebook, customs-document requests. Idempotency keys enforced; fault injection. |
+| `carrier-gateway` | TypeScript / Fastify + zod | Tracking, rebooking options, rebook, customs-document requests, claims. Idempotency keys enforced; fault injection. |
 | `notifier` | Python | Writes customer messages and ops tickets to an idempotent outbox. |
 
 Infra: Redpanda (Kafka API), Postgres, Jaeger, Prometheus, all in `docker-compose.yml`.
@@ -129,6 +129,11 @@ Full table: [`evals/results/offline.md`](evals/results/offline.md).
 real model, comparing the hybrid router with an agent-only baseline on outcome accuracy,
 policy violations, model calls, cost and latency.
 
+This run predates six hardening changes made after a design review (hard model-call
+deadline, stored agent outcomes, one case per shipment, a high-value guardrail, ingest
+conflict detection, claims filed through the gateway); those are verified by tests and the
+offline gate, not by a repeat live run.
+
 One model, `moonshotai/kimi-k3.1-pro` via OpenRouter: 30 scenarios (the two scripted-only
 failure cases are offline-only), one sample each, temperature 0, per-case budget $0.15
 (full table: [`evals/results/live-moonshotai_kimi-k3.1-pro.md`](evals/results/live-moonshotai_kimi-k3.1-pro.md)).
@@ -199,7 +204,7 @@ docs/ARCHITECTURE.md    system map (services, events, delivery, agent, observabi
 docs/adr/               architecture decisions
 ```
 
-Tests are hermetic (no broker, database, key or network): 71 pytest tests and 8 vitest
+Tests are hermetic (no broker, database, key or network): 88 pytest tests and 10 vitest
 tests. CI runs ruff, `mypy --strict`, pytest with coverage, the offline eval gate, the
 failure drills, gateway typecheck/tests/build, and builds every image. The repo was built
 with **Claude Code**; `CLAUDE.md` holds the rules agents and humans follow here, and

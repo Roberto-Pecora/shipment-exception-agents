@@ -89,6 +89,33 @@ describe("idempotent writes", () => {
   });
 });
 
+describe("claims", () => {
+  const claim = (key: string, body: object) => ({
+    method: "POST" as const,
+    url: "/v1/claims",
+    headers: { "idempotency-key": key },
+    payload: body,
+  });
+
+  it("files a claim once per idempotency key", async () => {
+    const app = buildApp({ fixtures });
+    const first = await app.inject(claim("case-1:claim", { shipment_id: "SHP-1", amount_gbp: 120 }));
+    const again = await app.inject(claim("case-1:claim", { shipment_id: "SHP-1", amount_gbp: 120 }));
+    expect(first.statusCode).toBe(201);
+    expect(first.json()).toMatchObject({ claim_id: "clm-0001", status: "submitted" });
+    expect(again.headers["idempotent-replayed"]).toBe("true");
+    expect(again.json()).toEqual(first.json());
+  });
+
+  it("rejects non-positive amounts and unknown shipments", async () => {
+    const app = buildApp({ fixtures });
+    const zero = await app.inject(claim("k1", { shipment_id: "SHP-1", amount_gbp: 0 }));
+    expect(zero.statusCode).toBe(422);
+    const unknown = await app.inject(claim("k2", { shipment_id: "NOPE", amount_gbp: 10 }));
+    expect(unknown.statusCode).toBe(404);
+  });
+});
+
 describe("fault injection and admin", () => {
   it("returns 503 with Retry-After when the fault fires", async () => {
     const app = buildApp({ fixtures, faultRate: 0.5, random: () => 0.1 });

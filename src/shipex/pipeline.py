@@ -40,7 +40,7 @@ class InProcessPipeline:
         self.cases = InMemoryCaseRegistry()
         handlers: dict[str, Handler] = {
             "router": router_handler(self.cases, policy, agent_only=agent_only),
-            "playbook": playbook_handler(),
+            "playbook": playbook_handler(agent.carrier),
             "agent": agent_handler(agent, self.outcomes),
             "notifier": notifier_handler(self.outbox, self.cases),
         }

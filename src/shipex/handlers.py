@@ -10,8 +10,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from shipex import telemetry
+from shipex.agent.carrier import CarrierClient, CarrierError
 from shipex.agent.loop import ShipmentExceptionAgent
-from shipex.bus.consumer import Handler, Outgoing, PermanentError
+from shipex.bus.consumer import Handler, Outgoing, PermanentError, TransientError
 from shipex.contracts.events import (
     CaseEscalated,
     CaseResolved,
@@ -81,7 +82,13 @@ def router_handler(
     return handle
 
 
-def playbook_handler() -> Handler:
+def playbook_handler(carrier: CarrierClient) -> Handler:
+    """Runs the (pure) playbook, then files any claim it decided on with the carrier.
+
+    Transient carrier failures are retried by the runner; a permanent one escalates the
+    case rather than telling the customer a claim exists when it does not.
+    """
+
     def handle(env: Envelope) -> Sequence[Outgoing]:
         case = env.parse(ExceptionRouted)
         playbook = PLAYBOOKS.get(case.decision.playbook or "")
@@ -89,9 +96,35 @@ def playbook_handler() -> Handler:
             raise PermanentError(f"no playbook named {case.decision.playbook!r}")
         with telemetry.tracer.start_as_current_span(f"playbook {case.decision.playbook}"):
             resolution = playbook(case)
+            try:
+                resolution = _file_claims(resolution, carrier)
+            except CarrierError as exc:
+                if exc.transient:
+                    raise TransientError(str(exc)) from exc
+                escalation = CaseEscalated(
+                    case_id=case.case_id,
+                    shipment_id=case.shipment.shipment_id,
+                    source="playbook",
+                    reason=f"claim could not be filed with the carrier: {exc}",
+                )
+                return [Outgoing(Topic.ESCALATIONS, env.derive(escalation, salt="resolve"))]
         return [Outgoing(Topic.RESOLUTIONS, env.derive(resolution, salt="resolve"))]
 
     return handle
+
+
+def _file_claims(resolution: CaseResolved, carrier: CarrierClient) -> CaseResolved:
+    actions = []
+    for action in resolution.actions:
+        if action.kind == "claim" and action.external_ref is None:
+            claim = carrier.open_claim(
+                resolution.shipment_id,
+                float(action.params["amount_gbp"]),
+                f"{resolution.case_id}:claim",
+            )
+            action = action.model_copy(update={"external_ref": claim.claim_id})
+        actions.append(action)
+    return resolution.model_copy(update={"actions": tuple(actions)})
 
 
 def agent_handler(agent: ShipmentExceptionAgent, outcomes: OutcomeStore) -> Handler:

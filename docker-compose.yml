@@ -85,6 +85,10 @@ services:
   playbook:
     <<: *python-service
     command: python -m shipex.services.worker playbook
+    depends_on:
+      <<: *python-deps
+      carrier-gateway:
+        condition: service_started
 
   agent:
     <<: *python-service
