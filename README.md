@@ -46,7 +46,7 @@ high-risk cases go to a human by rule (ADR 0002).
 
 | Service | Language | Role |
 |---|---|---|
-| `ingest-api` | Python / FastAPI | Carrier webhook. Validates against a strict contract, dedupes on the carrier's event id, publishes. |
+| `ingest-api` | Python / FastAPI | Carrier webhook. Validates against a strict contract, dedupes on the carrier's event id and content, rejects conflicting corrections (409), publishes. |
 | `router` | Python | Policy table → ignore / playbook / agent / human. |
 | `playbook` | Python | Deterministic pipelines: re-ETA notify, address confirmation, auto-claim. |
 | `agent` | Python | Bounded tool-calling loop via OpenRouter; guardrails and budgets; always emits resolved or escalated. |

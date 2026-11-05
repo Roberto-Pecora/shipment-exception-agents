@@ -13,7 +13,7 @@ from shipex.bus.memory import InMemoryBus
 from shipex.contracts.events import Envelope, ExceptionRouted, StatusCode, Topic
 from shipex.pipeline import InProcessPipeline
 from shipex.services.ingest_api import create_app
-from shipex.store.idempotency import InMemoryIdempotencyStore
+from shipex.store.ingest import InMemoryIngestLedger
 from tests.conftest import make_event
 
 SID = "SHP-1"
@@ -124,7 +124,7 @@ def test_agent_redelivery_reuses_the_first_outcome(carrier: InMemoryCarrier) -> 
 
 def test_ingest_api_dedupes_and_validates() -> None:
     bus = InMemoryBus()
-    api = TestClient(create_app(bus, InMemoryIdempotencyStore()))
+    api = TestClient(create_app(bus, InMemoryIngestLedger()))
     body: dict[str, Any] = make_event().model_dump(mode="json")
 
     first = api.post("/v1/shipment-events", json=body)
@@ -135,3 +135,20 @@ def test_ingest_api_dedupes_and_validates() -> None:
 
     assert api.post("/v1/shipment-events", json={**body, "status_code": "NOPE"}).status_code == 422
     assert api.get("/healthz").json() == {"status": "ok"}
+
+
+def test_ingest_api_rejects_a_conflicting_correction() -> None:
+    """Review finding 5: same carrier_event_id, different content, must not vanish."""
+    bus = InMemoryBus()
+    api = TestClient(create_app(bus, InMemoryIngestLedger()))
+    body: dict[str, Any] = make_event().model_dump(mode="json")
+    assert api.post("/v1/shipment-events", json=body).status_code == 202
+
+    corrected = {**body, "delay_hours": 30.0}
+    conflict = api.post("/v1/shipment-events", json=corrected)
+    assert conflict.status_code == 409
+    assert "new carrier_event_id" in conflict.json()["detail"]
+    assert len(bus.records(Topic.SHIPMENT_EVENTS)) == 1  # nothing published for the conflict
+
+    resent = api.post("/v1/shipment-events", json={**corrected, "carrier_event_id": "evt-1b"})
+    assert resent.status_code == 202 and resent.json()["duplicate"] is False

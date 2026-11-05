@@ -44,7 +44,7 @@ Each topic has a `<topic>.dlq`. Every consumer: idempotent, commit-after-publish
 
 | Service | Process | Consumes | Produces | State |
 |---|---|---|---|---|
-| `ingest-api` | FastAPI (`services/ingest_api.py`) | HTTP | `shipment.events.v1` | `processed_events` |
+| `ingest-api` | FastAPI (`services/ingest_api.py`) | HTTP | `shipment.events.v1` | `ingested_events` |
 | `router` | worker (`services/worker.py router`) | `shipment.events.v1` | playbook queue, agent queue, `escalations.v1` | `processed_events`, `open_cases` |
 | `playbook` | worker | `exceptions.playbook.v1` | `resolutions.v1` | `processed_events` |
 | `agent` | worker | `exceptions.agent.v1` | `resolutions.v1`, `escalations.v1` | `processed_events`, `agent_outcomes` |
@@ -66,7 +66,9 @@ Every message is an `Envelope`: `event_id`, `event_type`, `schema_version`, `occ
 - **Key** is `shipment_id`, so events for one shipment stay ordered within a partition.
 - **Ids are deterministic.** The ingest id is `uuid5(carrier:carrier_event_id)`; every
   derived event is `uuid5(parent_id:salt)`. A handler re-run after a crash therefore
-  re-emits the *same* ids, which downstream consumers dedupe.
+  re-emits the *same* ids, which downstream consumers dedupe. Because the ingest id ignores
+  content, ingest also stores a content fingerprint and rejects a re-used id with different
+  content (409); corrections must arrive under a new `carrier_event_id`.
 - **`case_id`** is the ingest event id. It follows the case through every event and is the
   base of every idempotency key sent to the carrier.
 - **`correlation_id`** is constant across a case; `causation_id` points at the parent event.
@@ -211,6 +213,9 @@ validated against pydantic models that mirror the zod schemas.
 
 Postgres holds two tables, created on startup:
 
+- `ingested_events(event_id, fingerprint, received_at)` — ingest's ledger. Same id and
+  same content fingerprint: accepted as a duplicate (202). Same id, different content: a
+  carrier correction, rejected with 409 rather than silently dropped.
 - `processed_events(consumer, event_id, processed_at)` — the idempotency ledger, primary
   key `(consumer, event_id)`.
 - `open_cases(shipment_id, case_id, opened_at)` — at most one open automated case per

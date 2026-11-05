@@ -15,6 +15,7 @@ from shipex.agent.llm import ScriptedChat, ScriptedTurn
 from shipex.agent.loop import ShipmentExceptionAgent
 from shipex.pipeline import InProcessPipeline
 from shipex.services.ingest_api import create_app
+from shipex.store.ingest import InMemoryIngestLedger
 from tests.conftest import make_event
 
 EXPORTER = InMemorySpanExporter()
@@ -38,7 +39,7 @@ def test_trace_spans_ingest_router_agent_and_notifier(carrier: InMemoryCarrier) 
         ScriptedTurn(tool_calls=(("escalate_to_human", {"reason": "needs a specialist"}),)),
     ]
     p = InProcessPipeline(ShipmentExceptionAgent(ScriptedChat(script), carrier))
-    api = TestClient(create_app(p.bus, p.idempotency))
+    api = TestClient(create_app(p.bus, InMemoryIngestLedger()))
     assert (
         api.post(
             "/v1/shipment-events", json=make_event(delay_hours=72.0).model_dump(mode="json")
