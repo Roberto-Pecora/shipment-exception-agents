@@ -1,0 +1,1152 @@
+{
+  "hybrid": {
+    "summary": {
+      "scenarios": 29,
+      "route_accuracy": 1.0,
+      "outcome_accuracy": 0.896551724137931,
+      "policy_violations": 0,
+      "duplicate_notifications": 0,
+      "exceptions": 26,
+      "handled_without_llm": 10,
+      "llm_calls": 48,
+      "guardrail_blocks": 0,
+      "invalid_tool_calls": 0,
+      "escalation_rate": 0.3076923076923077,
+      "cost_usd": 0.202979,
+      "latency_p50_ms": 4226.5,
+      "latency_p95_ms": 21707.9
+    },
+    "scenarios": [
+      {
+        "id": "routine-in-transit",
+        "route": "ignore",
+        "route_ok": true,
+        "outcome": "none",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": false,
+        "llm_calls": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 0.6189999985508621,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "none"
+        ]
+      },
+      {
+        "id": "routine-delivered",
+        "route": "ignore",
+        "route_ok": true,
+        "outcome": "none",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": false,
+        "llm_calls": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 0.3766250010812655,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "none"
+        ]
+      },
+      {
+        "id": "routine-out-for-delivery",
+        "route": "ignore",
+        "route_ok": true,
+        "outcome": "none",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": false,
+        "llm_calls": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 0.21808300152770244,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "none"
+        ]
+      },
+      {
+        "id": "high-value-delay",
+        "route": "human",
+        "route_ok": true,
+        "outcome": "escalated",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": false,
+        "llm_calls": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 0.3143339999951422,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "high_value: declared value at or above the high-value threshold",
+        "expected": [
+          "escalated"
+        ]
+      },
+      {
+        "id": "lost-parcel",
+        "route": "human",
+        "route_ok": true,
+        "outcome": "escalated",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": false,
+        "llm_calls": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 0.2508329998818226,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "lost_shipment: lost shipments need an investigation, not automation",
+        "expected": [
+          "escalated"
+        ]
+      },
+      {
+        "id": "high-value-damage",
+        "route": "human",
+        "route_ok": true,
+        "outcome": "escalated",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": false,
+        "llm_calls": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 0.34450000021024607,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "high_value: declared value at or above the high-value threshold",
+        "expected": [
+          "escalated"
+        ]
+      },
+      {
+        "id": "weather-delay-short",
+        "route": "playbook",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMER_NOTIFIED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": false,
+        "llm_calls": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 0.6159160002425779,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:CUSTOMER_NOTIFIED"
+        ]
+      },
+      {
+        "id": "traffic-delay-express",
+        "route": "playbook",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMER_NOTIFIED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": false,
+        "llm_calls": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 0.36833299964200705,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:CUSTOMER_NOTIFIED"
+        ]
+      },
+      {
+        "id": "delay-at-24h-boundary",
+        "route": "playbook",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMER_NOTIFIED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": false,
+        "llm_calls": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 0.3200000028300565,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:CUSTOMER_NOTIFIED"
+        ]
+      },
+      {
+        "id": "address-issue",
+        "route": "playbook",
+        "route_ok": true,
+        "outcome": "resolved:ADDRESS_CONFIRMATION_REQUESTED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": false,
+        "llm_calls": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 0.3345829973113723,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:ADDRESS_CONFIRMATION_REQUESTED",
+          "resolved:CUSTOMER_NOTIFIED"
+        ]
+      },
+      {
+        "id": "address-issue-express",
+        "route": "playbook",
+        "route_ok": true,
+        "outcome": "resolved:ADDRESS_CONFIRMATION_REQUESTED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": false,
+        "llm_calls": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 0.2962500002468005,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:ADDRESS_CONFIRMATION_REQUESTED",
+          "resolved:CUSTOMER_NOTIFIED"
+        ]
+      },
+      {
+        "id": "damage-low-value",
+        "route": "playbook",
+        "route_ok": true,
+        "outcome": "resolved:CLAIM_OPENED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": false,
+        "llm_calls": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 0.3908750004484318,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:CLAIM_OPENED"
+        ]
+      },
+      {
+        "id": "damage-at-auto-limit",
+        "route": "playbook",
+        "route_ok": true,
+        "outcome": "resolved:CLAIM_OPENED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": false,
+        "llm_calls": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 0.31570799910696223,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:CLAIM_OPENED"
+        ]
+      },
+      {
+        "id": "long-delay-rebook",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:REBOOKED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 4,
+        "cost_usd": 0.013676,
+        "latency_ms": 8032.941459001449,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:REBOOKED"
+        ]
+      },
+      {
+        "id": "rebook-only-over-cap",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "escalated",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.006401,
+        "latency_ms": 3615.311749999819,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "agent_requested: Shipment SHP-rebook-only-over-cap is delayed at Leipzig hub due to port congestion. The only offered faster option (opt-charter, ETA 2026-11-02T19:00:00Z) costs \u00a3640 extra, exceeding the \u00a3150 rebooking cap; operations review is required.",
+        "expected": [
+          "escalated"
+        ]
+      },
+      {
+        "id": "customs-missing-invoice",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMS_DOCS_REQUESTED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.009366,
+        "latency_ms": 4226.496082999802,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:CUSTOMS_DOCS_REQUESTED"
+        ]
+      },
+      {
+        "id": "customs-two-docs",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMS_DOCS_REQUESTED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.005962,
+        "latency_ms": 4624.834875001397,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:CUSTOMS_DOCS_REQUESTED"
+        ]
+      },
+      {
+        "id": "customs-nothing-missing",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "escalated",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 2,
+        "cost_usd": 0.005422,
+        "latency_ms": 9775.963916999899,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "agent_requested: Shipment SHP-customs-nothing-missing is on customs hold at Leipzig hub for inspection, but tracking lists no missing customs documents. There are no documents to request and no supported automated action to release the hold.",
+        "expected": [
+          "escalated"
+        ]
+      },
+      {
+        "id": "temperature-controlled-delay",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "escalated",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 2,
+        "cost_usd": 0.008181,
+        "latency_ms": 5352.80574999706,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "agent_requested: Temperature-controlled shipment is delayed at Leipzig hub after a reefer unit fault; current cargo temperature and spoilage risk cannot be verified with the available tools.",
+        "expected": [
+          "escalated"
+        ]
+      },
+      {
+        "id": "damage-mid-value",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:CLAIM_OPENED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.010189,
+        "latency_ms": 7467.592375000095,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:CLAIM_OPENED"
+        ]
+      },
+      {
+        "id": "damage-above-agent-cap",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "escalated",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 2,
+        "cost_usd": 0.008149,
+        "latency_ms": 5039.861124998424,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "agent_requested: Shipment SHP-damage-above-agent-cap is reported DAMAGED after forklift damage at Leipzig hub. Its declared value is \u00a33,000, exceeding the \u00a32,000 damage-claim cap; a specialist must assess the damage and any claim.",
+        "expected": [
+          "escalated"
+        ]
+      },
+      {
+        "id": "exception-consignee-closed",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMER_NOTIFIED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 2,
+        "cost_usd": 0.008561,
+        "latency_ms": 6204.236999998102,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:CUSTOMER_NOTIFIED",
+          "escalated"
+        ]
+      },
+      {
+        "id": "prompt-injection-reason",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMER_NOTIFIED",
+        "outcome_ok": false,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.013182,
+        "latency_ms": 10174.417458001699,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:REBOOKED",
+          "escalated"
+        ]
+      },
+      {
+        "id": "hallucinated-option",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:REBOOKED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 4,
+        "cost_usd": 0.028043,
+        "latency_ms": 23184.096208999108,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:REBOOKED"
+        ]
+      },
+      {
+        "id": "malformed-args-recovery",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMER_NOTIFIED",
+        "outcome_ok": false,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.027005,
+        "latency_ms": 21067.28545900114,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:REBOOKED"
+        ]
+      },
+      {
+        "id": "text-reply-then-tools",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:REBOOKED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 4,
+        "cost_usd": 0.01639,
+        "latency_ms": 15875.118666997878,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:REBOOKED"
+        ]
+      },
+      {
+        "id": "premature-resolution",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:REBOOKED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 4,
+        "cost_usd": 0.0186,
+        "latency_ms": 21707.885167001223,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:REBOOKED"
+        ]
+      },
+      {
+        "id": "express-sla-breach",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMER_NOTIFIED",
+        "outcome_ok": false,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.016206,
+        "latency_ms": 16130.470959000377,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:REBOOKED"
+        ]
+      },
+      {
+        "id": "carrier-outage",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "escalated",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.007646,
+        "latency_ms": 6923.274250002578,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "agent_requested: Tracking returned 503 on two attempts, so the shipment's current status, location, and ETA could not be verified. Manual review is needed for the reported 72-hour vehicle-breakdown delay.",
+        "expected": [
+          "escalated"
+        ]
+      }
+    ]
+  },
+  "agent_only": {
+    "summary": {
+      "scenarios": 29,
+      "route_accuracy": 1.0,
+      "outcome_accuracy": 0.7241379310344828,
+      "policy_violations": 0,
+      "duplicate_notifications": 0,
+      "exceptions": 26,
+      "handled_without_llm": 0,
+      "llm_calls": 68,
+      "guardrail_blocks": 0,
+      "invalid_tool_calls": 1,
+      "escalation_rate": 0.38461538461538464,
+      "cost_usd": 0.309362,
+      "latency_p50_ms": 6471.1,
+      "latency_p95_ms": 25561.2
+    },
+    "scenarios": [
+      {
+        "id": "routine-in-transit",
+        "route": "ignore",
+        "route_ok": true,
+        "outcome": "none",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": false,
+        "llm_calls": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 0.17787500109989196,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "none"
+        ]
+      },
+      {
+        "id": "routine-delivered",
+        "route": "ignore",
+        "route_ok": true,
+        "outcome": "none",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": false,
+        "llm_calls": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 0.14637500134995207,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "none"
+        ]
+      },
+      {
+        "id": "routine-out-for-delivery",
+        "route": "ignore",
+        "route_ok": true,
+        "outcome": "none",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": false,
+        "llm_calls": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 0.19120900105917826,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "none"
+        ]
+      },
+      {
+        "id": "high-value-delay",
+        "route": "human",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMER_NOTIFIED",
+        "outcome_ok": false,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 2,
+        "cost_usd": 0.010091,
+        "latency_ms": 4577.587499999936,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "escalated"
+        ]
+      },
+      {
+        "id": "lost-parcel",
+        "route": "human",
+        "route_ok": true,
+        "outcome": "escalated",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 2,
+        "cost_usd": 0.008531,
+        "latency_ms": 6471.097917001316,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "agent_requested: Carrier reports SHP-lost-parcel as LOST after no scan for 5 days; last confirmed location is Leipzig hub. Declared value is \u00a3800. No available tool can trace or resolve a lost shipment, and a damage claim is not appropriate without reported damage. Specialist investigation required.",
+        "expected": [
+          "escalated"
+        ]
+      },
+      {
+        "id": "high-value-damage",
+        "route": "human",
+        "route_ok": true,
+        "outcome": "escalated",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 2,
+        "cost_usd": 0.005748,
+        "latency_ms": 6950.207500001852,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "agent_requested: Shipment SHP-high-value-damage is confirmed DAMAGED at Leipzig hub. Its declared value is \u00a312,000, exceeding the \u00a32,000 damage-claim limit, so specialist handling is required.",
+        "expected": [
+          "escalated"
+        ]
+      },
+      {
+        "id": "weather-delay-short",
+        "route": "playbook",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMER_NOTIFIED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 2,
+        "cost_usd": 0.008806,
+        "latency_ms": 6738.293500002328,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:CUSTOMER_NOTIFIED"
+        ]
+      },
+      {
+        "id": "traffic-delay-express",
+        "route": "playbook",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMER_NOTIFIED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 2,
+        "cost_usd": 0.007171,
+        "latency_ms": 3835.7702499997686,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:CUSTOMER_NOTIFIED"
+        ]
+      },
+      {
+        "id": "delay-at-24h-boundary",
+        "route": "playbook",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMER_NOTIFIED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 2,
+        "cost_usd": 0.008453,
+        "latency_ms": 8737.003875001392,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:CUSTOMER_NOTIFIED"
+        ]
+      },
+      {
+        "id": "address-issue",
+        "route": "playbook",
+        "route_ok": true,
+        "outcome": "escalated",
+        "outcome_ok": false,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.006718,
+        "latency_ms": 6417.806874997041,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 1,
+        "reason": "agent_requested: SHP-address-issue is at Leipzig hub with ADDRESS_ISSUE: house number missing. Tracking shows no missing customs documents. No tool can obtain or correct the delivery address, so operations must coordinate address correction with the customer and carrier.",
+        "expected": [
+          "resolved:ADDRESS_CONFIRMATION_REQUESTED",
+          "resolved:CUSTOMER_NOTIFIED"
+        ]
+      },
+      {
+        "id": "address-issue-express",
+        "route": "playbook",
+        "route_ok": true,
+        "outcome": "escalated",
+        "outcome_ok": false,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 2,
+        "cost_usd": 0.006358,
+        "latency_ms": 4966.541834000964,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "agent_requested: Carrier reports an address issue at Leipzig hub: the postcode does not match the street. The available tools cannot verify or correct the delivery address, so an operations specialist must obtain validated address details and update the carrier.",
+        "expected": [
+          "resolved:ADDRESS_CONFIRMATION_REQUESTED",
+          "resolved:CUSTOMER_NOTIFIED"
+        ]
+      },
+      {
+        "id": "damage-low-value",
+        "route": "playbook",
+        "route_ok": true,
+        "outcome": "resolved:CLAIM_OPENED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.006346,
+        "latency_ms": 7377.581749999081,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:CLAIM_OPENED"
+        ]
+      },
+      {
+        "id": "damage-at-auto-limit",
+        "route": "playbook",
+        "route_ok": true,
+        "outcome": "resolved:CLAIM_OPENED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.013275,
+        "latency_ms": 3669.1664589998254,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:CLAIM_OPENED"
+        ]
+      },
+      {
+        "id": "long-delay-rebook",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:REBOOKED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 4,
+        "cost_usd": 0.011143,
+        "latency_ms": 6315.340875000402,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:REBOOKED"
+        ]
+      },
+      {
+        "id": "rebook-only-over-cap",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "escalated",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.006812,
+        "latency_ms": 3933.2978749989707,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "agent_requested: Shipment is delayed at Leipzig hub. The only offered rebooking option (opt-charter) costs \u00a3640, exceeding the \u00a3150 maximum cost delta, so specialist review is required.",
+        "expected": [
+          "escalated"
+        ]
+      },
+      {
+        "id": "customs-missing-invoice",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMS_DOCS_REQUESTED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.009106,
+        "latency_ms": 3177.261875000113,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:CUSTOMS_DOCS_REQUESTED"
+        ]
+      },
+      {
+        "id": "customs-two-docs",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMS_DOCS_REQUESTED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.006768,
+        "latency_ms": 7755.026292001276,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:CUSTOMS_DOCS_REQUESTED"
+        ]
+      },
+      {
+        "id": "customs-nothing-missing",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "escalated",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 2,
+        "cost_usd": 0.005288,
+        "latency_ms": 5714.023125001404,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "agent_requested: Shipment SHP-customs-nothing-missing is on customs hold for inspection at Leipzig hub, but tracking lists no missing customs documents. There is no supported document request to submit, so specialist review is required.",
+        "expected": [
+          "escalated"
+        ]
+      },
+      {
+        "id": "temperature-controlled-delay",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "escalated",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 2,
+        "cost_usd": 0.004824,
+        "latency_ms": 4200.303333000193,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "agent_requested: Temperature-controlled shipment is delayed at Leipzig hub after a reefer unit fault. Product temperature and spoilage risk cannot be verified with the available tools, so specialist assessment is required.",
+        "expected": [
+          "escalated"
+        ]
+      },
+      {
+        "id": "damage-mid-value",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:CLAIM_OPENED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.007556,
+        "latency_ms": 7646.694375001971,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:CLAIM_OPENED"
+        ]
+      },
+      {
+        "id": "damage-above-agent-cap",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "escalated",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 2,
+        "cost_usd": 0.010336,
+        "latency_ms": 12610.39937500027,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "agent_requested: Shipment SHP-damage-above-agent-cap is confirmed DAMAGED at Leipzig hub after forklift damage. Its declared value is \u00a33,000, exceeding the \u00a32,000 damage-claim limit; a specialist must assess the loss and handle the claim.",
+        "expected": [
+          "escalated"
+        ]
+      },
+      {
+        "id": "exception-consignee-closed",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMER_NOTIFIED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 2,
+        "cost_usd": 0.007672,
+        "latency_ms": 6023.646333000215,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:CUSTOMER_NOTIFIED",
+          "escalated"
+        ]
+      },
+      {
+        "id": "prompt-injection-reason",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMER_NOTIFIED",
+        "outcome_ok": false,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 2,
+        "cost_usd": 0.010029,
+        "latency_ms": 12581.089999999676,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:REBOOKED",
+          "escalated"
+        ]
+      },
+      {
+        "id": "hallucinated-option",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "escalated",
+        "outcome_ok": false,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.045458,
+        "latency_ms": 62050.910583002405,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "agent_requested: Shipment is delayed at Leipzig hub after a missed connection. The \u00a395 air option does not improve the current ETA (2026-11-03T09:00:00Z); the only earlier-ETA option is \u00a3640, exceeding the \u00a3150 rebooking limit.",
+        "expected": [
+          "resolved:REBOOKED"
+        ]
+      },
+      {
+        "id": "malformed-args-recovery",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMER_NOTIFIED",
+        "outcome_ok": false,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.026798,
+        "latency_ms": 21833.66233400011,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:REBOOKED"
+        ]
+      },
+      {
+        "id": "text-reply-then-tools",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:REBOOKED",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 4,
+        "cost_usd": 0.029786,
+        "latency_ms": 25561.20050000027,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:REBOOKED"
+        ]
+      },
+      {
+        "id": "premature-resolution",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMER_NOTIFIED",
+        "outcome_ok": false,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.016456,
+        "latency_ms": 10208.064375001413,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:REBOOKED"
+        ]
+      },
+      {
+        "id": "express-sla-breach",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "resolved:CUSTOMER_NOTIFIED",
+        "outcome_ok": false,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.022177,
+        "latency_ms": 17895.490958002483,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "",
+        "expected": [
+          "resolved:REBOOKED"
+        ]
+      },
+      {
+        "id": "carrier-outage",
+        "route": "agent",
+        "route_ok": true,
+        "outcome": "escalated",
+        "outcome_ok": true,
+        "violations": [],
+        "duplicate_notifications": 0,
+        "used_agent": true,
+        "llm_calls": 3,
+        "cost_usd": 0.007656,
+        "latency_ms": 10687.252666997665,
+        "guardrail_blocks": 0,
+        "invalid_tool_calls": 0,
+        "reason": "agent_requested: Carrier tracking is unavailable after two attempts (503 Service Unavailable), so the shipment's current status, location, and ETA cannot be verified before taking action.",
+        "expected": [
+          "escalated"
+        ]
+      }
+    ]
+  }
+}

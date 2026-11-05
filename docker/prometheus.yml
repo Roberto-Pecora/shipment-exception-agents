@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: ingest-api
+    static_configs:
+      - targets: ["ingest-api:8080"]
+  - job_name: workers
+    static_configs:
+      - targets: ["router:9100", "playbook:9100", "agent:9100", "notifier:9100"]

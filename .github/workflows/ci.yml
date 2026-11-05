@@ -1,0 +1,45 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv venv
+      - run: uv pip install -e ".[dev]"
+      - run: uv run ruff check src tests evals scripts
+      - run: uv run ruff format --check src tests evals scripts
+      - run: uv run mypy src
+      - run: uv run pytest -q --cov=shipex --cov-report=term-missing
+      - name: Offline eval gate (routing, guardrails, policy violations, duplicates)
+        run: uv run python evals/run_eval.py --gate
+      - name: Failure drills (poison messages, worker crash, flaky sink, redelivery)
+        run: uv run python evals/failure_suite.py
+
+  carrier-gateway:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/carrier-gateway
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: services/carrier-gateway/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  images:
+    needs: [python, carrier-gateway]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose build

@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+uv.lock
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+*.egg-info/
+node_modules/
+services/carrier-gateway/dist/

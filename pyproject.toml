@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shipex"
+version = "0.1.0"
+description = "Event-driven shipment-exception handling: deterministic-first routing, a bounded tool-calling agent, and microservices on Kafka with retries, DLQ, idempotency and OpenTelemetry."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+  "pydantic==2.14.2",
+  "pydantic-settings==2.16.2",
+  "httpx==0.28.1",
+  "fastapi==0.162.0",
+  "uvicorn[standard]==0.54.0",
+  "confluent-kafka==2.16.1",
+  "psycopg[binary]==3.3.8",
+  "prometheus-client==0.26.0",
+  "opentelemetry-api==1.45.2",
+  "opentelemetry-sdk==1.45.2",
+  "opentelemetry-exporter-otlp-proto-http==1.45.2",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==9.2.0",
+  "pytest-cov==7.1.0",
+  "ruff==0.17.3",
+  "mypy==2.4.1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "C4"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore:Using `httpx` with `starlette.testclient` is deprecated"]
