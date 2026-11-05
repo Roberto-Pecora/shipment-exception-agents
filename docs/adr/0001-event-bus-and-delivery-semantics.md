@@ -21,8 +21,11 @@ and fail independently, and no exception may be silently lost.
   carrier-gateway, so a replayed agent run cannot rebook twice.
 - **Agent outcomes are stored per case** (`agent_outcomes`, first writer wins). Keys only
   dedupe the *same* action; a re-run agent may choose a different one. A redelivered case
-  republishes its stored outcome instead of calling the model again. The remaining window
-  is a crash *during* a run, before its outcome is stored.
+  republishes its stored outcome instead of calling the model again.
+- **Agent side effects are journalled write-ahead** (`agent_action_journal`): intent before
+  the carrier call, reference after. A redelivered case with journal entries but no stored
+  outcome was interrupted mid-run; it escalates with those actions rather than re-running
+  the agent. Together these mean an agent case acts through at most one run.
 - **Bounded in-process retries, then DLQ.** Transient errors retry with jittered
   exponential backoff (default 3 attempts); permanent errors and poison records go
   straight to `<topic>.dlq` with the error, attempt count and source offset in headers.

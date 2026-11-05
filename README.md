@@ -204,7 +204,7 @@ docs/ARCHITECTURE.md    system map (services, events, delivery, agent, observabi
 docs/adr/               architecture decisions
 ```
 
-Tests are hermetic (no broker, database, key or network): 88 pytest tests and 10 vitest
+Tests are hermetic (no broker, database, key or network): 92 pytest tests and 10 vitest
 tests. CI runs ruff, `mypy --strict`, pytest with coverage, the offline eval gate, the
 failure drills, gateway typecheck/tests/build, and builds every image. The repo was built
 with **Claude Code**; `CLAUDE.md` holds the rules agents and humans follow here, and

@@ -40,6 +40,7 @@ from shipex.contracts.events import (
     ResolutionCode,
     RunStats,
 )
+from shipex.store.journal import ActionJournal, InMemoryActionJournal
 
 
 @dataclass(frozen=True)
@@ -151,10 +152,12 @@ class ShipmentExceptionAgent:
         budget: AgentBudget | None = None,
         policy: GuardrailPolicy | None = None,
         clock: Callable[[], float] = time.monotonic,
+        journal: ActionJournal | None = None,
     ) -> None:
         self._llm = llm
         self._carrier = carrier
         self.carrier = carrier  # shared with the playbook worker in the in-process pipeline
+        self.journal: ActionJournal = journal or InMemoryActionJournal()
         self._budget = budget or AgentBudget()
         self._policy = policy or GuardrailPolicy()
         self._clock = clock
@@ -293,43 +296,44 @@ class ShipmentExceptionAgent:
             options = self._carrier.get_rebooking_options(sid)
             state.offered_options.update({o.option_id: o for o in options})
             return {"options": [o.model_dump(mode="json") for o in options]}
+        # Side effects: journal the intent *before* calling the carrier and the reference
+        # after, so a crash at any point leaves a record a redelivery can act on.
         if isinstance(args, RebookArgs):
             option = state.offered_options[args.option_id]
-            conf = self._carrier.rebook(sid, args.option_id, f"{state.case_id}:rebook")
+            key = f"{state.case_id}:rebook"
+            params: dict[str, Any] = {
+                "option_id": option.option_id,
+                "service": option.service,
+                "cost_delta_gbp": option.cost_delta_gbp,
+            }
+            self.journal.record_intent(state.case_id, key, "rebook", params)
+            conf = self._carrier.rebook(sid, args.option_id, key)
+            self.journal.record_done(state.case_id, key, conf.rebooking_id)
             state.actions.append(
                 Action(
                     kind="rebook",
-                    params={
-                        "option_id": option.option_id,
-                        "service": option.service,
-                        "cost_delta_gbp": option.cost_delta_gbp,
-                        "new_eta": conf.new_eta.isoformat(),
-                    },
+                    params={**params, "new_eta": conf.new_eta.isoformat()},
                     external_ref=conf.rebooking_id,
                 )
             )
             return conf.model_dump(mode="json")
         if isinstance(args, CustomsDocsArgs):
-            req = self._carrier.request_customs_documents(
-                sid, args.documents, f"{state.case_id}:customs_docs"
-            )
+            key = f"{state.case_id}:customs_docs"
+            params = {"documents": list(args.documents)}
+            self.journal.record_intent(state.case_id, key, "customs_docs_request", params)
+            req = self._carrier.request_customs_documents(sid, args.documents, key)
+            self.journal.record_done(state.case_id, key, req.request_id)
             state.actions.append(
-                Action(
-                    kind="customs_docs_request",
-                    params={"documents": req.documents},
-                    external_ref=req.request_id,
-                )
+                Action(kind="customs_docs_request", params=params, external_ref=req.request_id)
             )
             return req.model_dump(mode="json")
         if isinstance(args, ClaimArgs):
-            claim = self._carrier.open_claim(sid, args.amount_gbp, f"{state.case_id}:claim")
-            state.actions.append(
-                Action(
-                    kind="claim",
-                    params={"amount_gbp": claim.amount_gbp},
-                    external_ref=claim.claim_id,
-                )
-            )
+            key = f"{state.case_id}:claim"
+            params = {"amount_gbp": args.amount_gbp}
+            self.journal.record_intent(state.case_id, key, "claim", params)
+            claim = self._carrier.open_claim(sid, args.amount_gbp, key)
+            self.journal.record_done(state.case_id, key, claim.claim_id)
+            state.actions.append(Action(kind="claim", params=params, external_ref=claim.claim_id))
             return claim.model_dump(mode="json")
         raise AssertionError(f"no executor for {name}")
 

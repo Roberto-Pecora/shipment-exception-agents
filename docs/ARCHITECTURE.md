@@ -47,7 +47,7 @@ Each topic has a `<topic>.dlq`. Every consumer: idempotent, commit-after-publish
 | `ingest-api` | FastAPI (`services/ingest_api.py`) | HTTP | `shipment.events.v1` | `ingested_events` |
 | `router` | worker (`services/worker.py router`) | `shipment.events.v1` | playbook queue, agent queue, `escalations.v1` | `processed_events`, `open_cases` |
 | `playbook` | worker | `exceptions.playbook.v1` | `resolutions.v1` | `processed_events` |
-| `agent` | worker | `exceptions.agent.v1` | `resolutions.v1`, `escalations.v1` | `processed_events`, `agent_outcomes` |
+| `agent` | worker | `exceptions.agent.v1` | `resolutions.v1`, `escalations.v1` | `processed_events`, `agent_outcomes`, `agent_action_journal` |
 | `notifier` | worker | `resolutions.v1`, `escalations.v1` | none (writes outbox) | `notification_outbox`, `open_cases` |
 | `carrier-gateway` | Node/Fastify (`services/carrier-gateway`) | HTTP from `agent` and `playbook` | none | in-memory (demo) |
 
@@ -111,6 +111,10 @@ What this guarantees:
   agent, and a second run can pick a *different* action that no idempotency key catches.
   The first finished outcome is stored under `case_id` (`agent_outcomes`, first writer
   wins) and every redelivery republishes it without calling the model.
+- **A run killed mid-way is never re-run after it has acted.** Each side effect is
+  written to `agent_action_journal` as an intent *before* the carrier call and confirmed
+  with its external reference after. A redelivered case with journal entries but no stored
+  outcome escalates to a person, listing confirmed actions and any whose outcome is unknown.
 
 Kafka specifics (`bus/kafka.py`): idempotent producer with `acks=all`; consumer with
 auto-commit off and explicit synchronous commits. The `Publisher` and `Subscriber`
@@ -227,6 +231,9 @@ Postgres holds two tables, created on startup:
   shipment; opened by the router, closed by the notifier.
 - `agent_outcomes(case_id, event_type, payload, created_at)` — the first finished agent
   outcome per case, republished on redelivery.
+- `agent_action_journal(case_id, idempotency_key, kind, params, external_ref, …)` — a
+  write-ahead record of each agent side effect; `external_ref` is null until the carrier
+  confirms.
 - `notification_outbox(notification_id, case_id, shipment_id, channel, body, created_at)` —
   `notification_id` is `<case_id>:customer` or `<case_id>:ops`, so a repeated insert is a
   no-op (`ON CONFLICT DO NOTHING`).
@@ -278,10 +285,10 @@ run in CI.
 - **Ledger/publish window:** a crash between `flush` and `mark` replays a record. This is
   safe only because ids are deterministic and side effects are keyed; a new side effect
   without an idempotency key would break the guarantee.
-- **Crash during an agent run:** the outcome is stored only when the run finishes, so a
-  worker killed mid-run re-runs the agent. Repeats of the same action are absorbed by
-  idempotency keys; a different action on the second run is still possible in that window.
-  Journalling each action as it executes would close it.
+- **Crash during an agent run escalates rather than resumes.** A redelivered case whose
+  journal shows started actions goes to a person, even when resuming automatically would
+  have been safe. That trades some ops workload for never letting a second run act
+  differently. A crash before the first side effect simply re-runs the agent.
 - **Single Postgres** serves the ledger, outbox, case registry and agent outcomes;
   per-service stores would be the production shape.
 - **Escalated cases close when the ops ticket is written.** Automation then treats the

@@ -30,6 +30,7 @@ from shipex.handlers import (
 )
 from shipex.store.cases import PostgresCaseRegistry
 from shipex.store.idempotency import PostgresIdempotencyStore
+from shipex.store.journal import PostgresActionJournal
 from shipex.store.outbox import PostgresOutbox
 from shipex.store.outcomes import PostgresOutcomeStore
 
@@ -61,6 +62,7 @@ def build_handler(
             HttpCarrierClient(settings.carrier_gateway_url),
             settings.agent_budget(),
             settings.guardrail_policy(),
+            journal=PostgresActionJournal(conn),
         )
         return agent_handler(agent, PostgresOutcomeStore(conn))
     if role == "notifier":

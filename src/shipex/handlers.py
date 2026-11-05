@@ -14,6 +14,7 @@ from shipex.agent.carrier import CarrierClient, CarrierError
 from shipex.agent.loop import ShipmentExceptionAgent
 from shipex.bus.consumer import Handler, Outgoing, PermanentError, TransientError
 from shipex.contracts.events import (
+    Action,
     CaseEscalated,
     CaseResolved,
     Envelope,
@@ -26,6 +27,7 @@ from shipex.contracts.events import (
 from shipex.playbooks import PLAYBOOKS
 from shipex.routing.rules import RoutingPolicy, route
 from shipex.store.cases import CaseRegistry
+from shipex.store.journal import JournalEntry
 from shipex.store.outbox import Notification, Outbox
 from shipex.store.outcomes import OutcomeStore, StoredOutcome
 
@@ -128,13 +130,24 @@ def _file_claims(resolution: CaseResolved, carrier: CarrierClient) -> CaseResolv
 
 
 def agent_handler(agent: ShipmentExceptionAgent, outcomes: OutcomeStore) -> Handler:
-    """Runs the agent at most once per case to completion; redeliveries reuse the outcome."""
+    """Runs the agent at most once per case.
+
+    - Outcome stored: a redelivery after the run finished; republish it.
+    - Journal entries but no outcome: the last run was interrupted after it started acting;
+      escalate with what it did instead of letting a second run choose differently.
+    - Neither: first delivery (or a crash before any side effect); run the agent.
+    """
 
     def handle(env: Envelope) -> Sequence[Outgoing]:
         case = env.parse(ExceptionRouted)
         stored = outcomes.get(case.case_id)
         if stored is None:
-            event = agent.run(case).to_event(case)
+            started = agent.journal.entries(case.case_id)
+            if started:
+                telemetry.AGENT_OUTCOMES.labels("interrupted").inc()
+                event: CaseResolved | CaseEscalated = interrupted_run(case, started)
+            else:
+                event = agent.run(case).to_event(case)
             stored = outcomes.put_if_absent(
                 case.case_id, StoredOutcome(type(event).__name__, event.model_dump_json())
             )
@@ -149,6 +162,30 @@ def agent_handler(agent: ShipmentExceptionAgent, outcomes: OutcomeStore) -> Hand
         return [Outgoing(topic, env.derive(final, salt="resolve"))]
 
     return handle
+
+
+def interrupted_run(case: ExceptionRouted, started: Sequence[JournalEntry]) -> CaseEscalated:
+    confirmed = [e for e in started if e.external_ref is not None]
+    unconfirmed = [e for e in started if e.external_ref is None]
+    parts = [f"{e.kind} ({e.external_ref})" for e in confirmed] + [
+        f"{e.kind} (outcome unknown)" for e in unconfirmed
+    ]
+    return CaseEscalated(
+        case_id=case.case_id,
+        shipment_id=case.shipment.shipment_id,
+        source="agent",
+        reason=(
+            "agent run was interrupted after it started acting: "
+            + ", ".join(parts)
+            + "; check these with the carrier before doing anything else"
+        ),
+        actions=tuple(
+            Action.model_validate(
+                {"kind": e.kind, "params": e.params, "external_ref": e.external_ref}
+            )
+            for e in confirmed
+        ),
+    )
 
 
 def notifier_handler(outbox: Outbox, cases: CaseRegistry) -> Handler:
