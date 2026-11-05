@@ -28,6 +28,7 @@ from shipex.handlers import (
     playbook_handler,
     router_handler,
 )
+from shipex.store.cases import PostgresCaseRegistry
 from shipex.store.idempotency import PostgresIdempotencyStore
 from shipex.store.outbox import PostgresOutbox
 from shipex.store.outcomes import PostgresOutcomeStore
@@ -51,7 +52,7 @@ def build_handler(
     role: str, settings: Settings, conn: psycopg.Connection[tuple[object, ...]]
 ) -> Handler:
     if role == "router":
-        return router_handler(settings.routing_policy())
+        return router_handler(PostgresCaseRegistry(conn), settings.routing_policy())
     if role == "playbook":
         return playbook_handler()
     if role == "agent":
@@ -63,7 +64,7 @@ def build_handler(
         )
         return agent_handler(agent, PostgresOutcomeStore(conn))
     if role == "notifier":
-        return notifier_handler(PostgresOutbox(conn))
+        return notifier_handler(PostgresOutbox(conn), PostgresCaseRegistry(conn))
     raise SystemExit(f"unknown role {role!r}; expected one of {sorted(SUBSCRIPTIONS)}")
 
 

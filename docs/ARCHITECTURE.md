@@ -45,10 +45,10 @@ Each topic has a `<topic>.dlq`. Every consumer: idempotent, commit-after-publish
 | Service | Process | Consumes | Produces | State |
 |---|---|---|---|---|
 | `ingest-api` | FastAPI (`services/ingest_api.py`) | HTTP | `shipment.events.v1` | `processed_events` |
-| `router` | worker (`services/worker.py router`) | `shipment.events.v1` | playbook queue, agent queue, `escalations.v1` | `processed_events` |
+| `router` | worker (`services/worker.py router`) | `shipment.events.v1` | playbook queue, agent queue, `escalations.v1` | `processed_events`, `open_cases` |
 | `playbook` | worker | `exceptions.playbook.v1` | `resolutions.v1` | `processed_events` |
 | `agent` | worker | `exceptions.agent.v1` | `resolutions.v1`, `escalations.v1` | `processed_events`, `agent_outcomes` |
-| `notifier` | worker | `resolutions.v1`, `escalations.v1` | none (writes outbox) | `notification_outbox` |
+| `notifier` | worker | `resolutions.v1`, `escalations.v1` | none (writes outbox) | `notification_outbox`, `open_cases` |
 | `carrier-gateway` | Node/Fastify (`services/carrier-gateway`) | HTTP from `agent` | none | in-memory (demo) |
 
 The four workers are one Python image with the role passed as an argument; each runs in its
@@ -133,6 +133,13 @@ Thresholds come from config (`HIGH_VALUE_GBP`, `AUTO_CLAIM_LIMIT_GBP`,
 so it falls through to the agent. Playbooks (`playbooks/`) are pure functions of the routed
 case and cost nothing per run.
 
+**One automated case per shipment.** Before routing an exception to a playbook, the agent or
+a human, the router opens a case for the shipment in `open_cases`; the notifier closes it
+once the case's final event is written. If a case is already open (a DELAYED case still with
+the agent when a DAMAGED event arrives), the new exception is routed to a human with
+`rule_id=concurrent_case` instead of starting a second case that could act in parallel. The
+router consumes each shipment's events in order, so this check needs no locking.
+
 ## 6. The agent (`agent/`, ADR 0003)
 
 ```text
@@ -204,6 +211,8 @@ Postgres holds two tables, created on startup:
 
 - `processed_events(consumer, event_id, processed_at)` — the idempotency ledger, primary
   key `(consumer, event_id)`.
+- `open_cases(shipment_id, case_id, opened_at)` — at most one open automated case per
+  shipment; opened by the router, closed by the notifier.
 - `agent_outcomes(case_id, event_type, payload, created_at)` — the first finished agent
   outcome per case, republished on redelivery.
 - `notification_outbox(notification_id, case_id, shipment_id, channel, body, created_at)` —
@@ -261,8 +270,12 @@ run in CI.
   worker killed mid-run re-runs the agent. Repeats of the same action are absorbed by
   idempotency keys; a different action on the second run is still possible in that window.
   Journalling each action as it executes would close it.
-- **Single Postgres** serves the ledger and outbox; per-service stores would be the
-  production shape.
+- **Single Postgres** serves the ledger, outbox, case registry and agent outcomes;
+  per-service stores would be the production shape.
+- **Escalated cases close when the ops ticket is written.** Automation then treats the
+  shipment as free, so a later exception can open a new automated case while a human is
+  still working the escalated one. A "held by ops" state with an API to release it would
+  close this gap.
 - **carrier-gateway state is in memory** and lost on restart; it is a fixture-backed stand-in.
 - **No authentication** on ingest-api or the gateway; the admin endpoint is local-only.
 - **DLQ replay is manual.** There is no automated reprocessing tool.

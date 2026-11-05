@@ -32,3 +32,6 @@ the route mix is observable and each rule is unit-tested in a table.
   this buys on a real model.
 - New exception types default to the agent. Promoting a pattern into a rule is the
   intended path as volume reveals it.
+- The router also enforces one open automated case per shipment (`open_cases`). A second
+  exception while a case is open becomes `concurrent_case` and goes to a human, so a
+  playbook and the agent never act on the same parcel at once.

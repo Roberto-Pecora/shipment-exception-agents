@@ -24,6 +24,7 @@ from shipex.contracts.events import (
 )
 from shipex.playbooks import PLAYBOOKS
 from shipex.routing.rules import RoutingPolicy, route
+from shipex.store.cases import CaseRegistry
 from shipex.store.outbox import Notification, Outbox
 from shipex.store.outcomes import OutcomeStore, StoredOutcome
 
@@ -35,7 +36,9 @@ SUBSCRIPTIONS: dict[str, tuple[Topic, ...]] = {
 }
 
 
-def router_handler(policy: RoutingPolicy | None = None, agent_only: bool = False) -> Handler:
+def router_handler(
+    cases: CaseRegistry, policy: RoutingPolicy | None = None, agent_only: bool = False
+) -> Handler:
     """`agent_only=True` is the eval baseline: every exception goes to the LLM."""
 
     def handle(env: Envelope) -> Sequence[Outgoing]:
@@ -46,6 +49,17 @@ def router_handler(policy: RoutingPolicy | None = None, agent_only: bool = False
                 decision = RoutingDecision(
                     route=Route.AGENT, rule_id="agent_only", reason="baseline: agent handles all"
                 )
+            if decision.route is not Route.IGNORE:
+                open_case = cases.open(event.shipment_id, env.event_id)
+                if open_case is not None:
+                    decision = RoutingDecision(
+                        route=Route.HUMAN,
+                        rule_id="concurrent_case",
+                        reason=(
+                            f"shipment already has open case {open_case}; a second "
+                            f"{event.status_code.value} exception needs a human"
+                        ),
+                    )
             span.set_attribute("shipex.route", decision.route.value)
             span.set_attribute("shipex.rule_id", decision.rule_id)
         telemetry.ROUTES.labels(decision.route.value, decision.rule_id).inc()
@@ -104,7 +118,9 @@ def agent_handler(agent: ShipmentExceptionAgent, outcomes: OutcomeStore) -> Hand
     return handle
 
 
-def notifier_handler(outbox: Outbox) -> Handler:
+def notifier_handler(outbox: Outbox, cases: CaseRegistry) -> Handler:
+    """Writes the final message for a case, then closes the case for its shipment."""
+
     def handle(env: Envelope) -> Sequence[Outgoing]:
         if env.event_type == "CaseResolved":
             r = env.parse(CaseResolved)
@@ -117,6 +133,7 @@ def notifier_handler(outbox: Outbox) -> Handler:
                     r.customer_message,
                 )
             )
+            cases.close(r.case_id)
         elif env.event_type == "CaseEscalated":
             e = env.parse(CaseEscalated)
             outbox.add(
@@ -128,6 +145,7 @@ def notifier_handler(outbox: Outbox) -> Handler:
                     f"Escalated by {e.source}: {e.reason}",
                 )
             )
+            cases.close(e.case_id)
         else:
             raise PermanentError(f"notifier cannot handle {env.event_type}")
         return []
