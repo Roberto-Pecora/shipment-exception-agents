@@ -47,6 +47,7 @@ class Settings(BaseSettings):
         return GuardrailPolicy(
             max_rebook_cost_delta_gbp=self.max_rebook_cost_delta_gbp,
             max_agent_claim_gbp=self.max_agent_claim_gbp,
+            high_value_gbp=self.high_value_gbp,
         )
 
     def agent_worst_case_s(self) -> float:

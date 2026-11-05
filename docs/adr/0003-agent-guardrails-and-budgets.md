@@ -16,7 +16,8 @@ reads untrusted carrier free text. Prompt instructions alone are not a control.
   the case's shipment; rebook only an *offered* option under the cost cap, once; claims
   capped by declared value and an agent limit; customer messages may not promise refunds,
   compensation or guarantees; a resolution code is accepted only if backed by the matching
-  successful action; temperature-controlled goods may only be escalated. Blocked calls
+  successful action; temperature-controlled goods and high-value shipments (the router's
+  threshold, repeated so a routing change cannot expose them) may only be escalated. Blocked calls
   are returned to the model with the reason. The last rule moved from the prompt into code
   after a smaller model ignored the prompt version in a live run.
 - **Budgets**: max model calls, max spend, max wall time, max invalid calls. Wall time is a

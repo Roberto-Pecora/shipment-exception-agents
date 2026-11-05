@@ -169,7 +169,9 @@ ExceptionRouted ─► ShipmentExceptionAgent.run
   the £150 cost-delta cap; claims ≤ declared value and ≤ £2,000, once; customs request once;
   customer messages may not mention refund / compensation / guarantee; a resolution code
   is accepted only if backed by the matching successful action; temperature-controlled
-  goods may only be read and escalated (rebook, claim, customs and resolve are blocked).
+  goods and shipments with declared value ≥ £10,000 (the router's high-value threshold,
+  repeated here as a second line of defence) may only be read and escalated (rebook,
+  claim, customs and resolve are blocked).
 - **Budgets** (`AgentBudget`): 8 model calls, $0.05, 90 s, 3 invalid calls (defaults, all
   configurable). The wall-clock budget is a hard deadline: each model call receives only the
   time left, which bounds its HTTP timeout, its retries and its backoff sleeps. The agent

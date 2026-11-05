@@ -77,7 +77,7 @@ Infra: Redpanda (Kafka API), Postgres, Jaeger, Prometheus, all in `docker-compos
   shipment; rebook only an offered option, under the cost cap, once; claims capped by
   declared value and an agent limit; no refunds, compensation or guarantees in customer
   messages; a resolution code needs the matching successful action; temperature-controlled
-  goods can only be escalated.
+  and high-value (declared value ≥ £10,000) shipments can only be escalated.
 - Budgets: model calls, spend, wall time, invalid calls. A breach, a provider outage, or
   the model's own choice ends the run as `CaseEscalated`.
 - Carrier free text is treated as data: a prompt-injection scenario tries to redirect a
@@ -152,8 +152,10 @@ How to read this:
   I fixed the fixture and reran. This is one sample on 30 scenarios I revised after seeing
   the failures: it shows this model and the harness agree on these cases, not a benchmark.
 - **Agent-only misses.** It handled a £25,000 consignment with a customer notification
-  instead of escalating. The hybrid router sends that to a human by rule, and the agent's
-  guardrails do not cap declared value. Two address-issue cases escalated because the agent
+  instead of escalating. The hybrid router sends that to a human by rule; at the time the
+  agent's guardrails did not cap declared value. They now do (high-value cases can only be
+  escalated), which would block that action; the live run has not been repeated since.
+  Two address-issue cases escalated because the agent
   has no address-confirmation tool, which my expected outcomes arguably should allow, and a
   24-hour delay was rebooked, which is defensible. The comparison favours the router by
   construction, since the scenarios were written around its rules.

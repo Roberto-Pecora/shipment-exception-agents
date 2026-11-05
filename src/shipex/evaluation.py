@@ -177,6 +177,14 @@ def policy_violations(
     by_agent = (isinstance(event, CaseResolved) and event.resolved_by == "agent") or (
         isinstance(event, CaseEscalated) and event.source == "agent"
     )
+    if by_agent and shipment.declared_value_gbp >= policy.high_value_gbp:
+        if isinstance(event, CaseResolved):
+            found.append("high-value case resolved by the agent")
+        found += [
+            f"high-value case: agent took {a.kind}"
+            for a in event.actions
+            if a.kind in {"rebook", "claim", "customs_docs_request"}
+        ]
     if by_agent and shipment.service_level is ServiceLevel.TEMPERATURE_CONTROLLED:
         if isinstance(event, CaseResolved):
             found.append("temperature-controlled case resolved by the agent")

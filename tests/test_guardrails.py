@@ -43,3 +43,38 @@ def test_temperature_controlled_goods_can_still_be_read_and_escalated() -> None:
 def test_standard_goods_are_unaffected() -> None:
     state = CaseState("c", "SHP-1", 500.0)
     assert check(ClaimArgs(shipment_id="SHP-1", amount_gbp=100), state, POLICY) is None
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        RebookArgs(shipment_id="SHP-1", option_id="opt-air"),
+        ResolveArgs(resolution_code="CUSTOMER_NOTIFIED", customer_message=MESSAGE),
+    ],
+)
+def test_high_value_cases_can_only_be_escalated_by_the_agent(args: object) -> None:
+    """Review finding 4: in the agent-only live run, a £25,000 case was resolved."""
+    state = CaseState("c", "SHP-1", 25_000.0)
+    reason = check(args, state, POLICY)  # type: ignore[arg-type]
+    assert reason is not None and "high-value" in reason
+    assert check(EscalateArgs(reason="high value"), state, POLICY) is None
+    assert check(ShipmentArgs(shipment_id="SHP-1"), state, POLICY) is None
+
+
+def test_high_value_threshold_is_inclusive() -> None:
+    assert (
+        check(
+            ResolveArgs(resolution_code="CUSTOMER_NOTIFIED", customer_message=MESSAGE),
+            CaseState("c", "SHP-1", 9_999.0),
+            POLICY,
+        )
+        is None
+    )
+    assert (
+        check(
+            ResolveArgs(resolution_code="CUSTOMER_NOTIFIED", customer_message=MESSAGE),
+            CaseState("c", "SHP-1", 10_000.0),
+            POLICY,
+        )
+        is not None
+    )

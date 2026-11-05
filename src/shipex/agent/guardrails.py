@@ -18,6 +18,9 @@ from shipex.contracts.events import Action, ServiceLevel
 class GuardrailPolicy:
     max_rebook_cost_delta_gbp: float = 150.0
     max_agent_claim_gbp: float = 2_000.0
+    # Same threshold as the router's high_value rule: defence in depth if a routing change
+    # (or the agent-only baseline) ever lets a high-value case reach the agent.
+    high_value_gbp: float = 10_000.0
     forbidden_phrases: tuple[str, ...] = ("refund", "compensation", "guarantee")
 
 
@@ -46,6 +49,14 @@ def check(args: ToolArgs, state: CaseState, policy: GuardrailPolicy) -> str | No
     target = getattr(args, "shipment_id", state.shipment_id)
     if target != state.shipment_id:
         return f"tools may only act on shipment {state.shipment_id}, not {target}"
+
+    if state.declared_value_gbp >= policy.high_value_gbp and isinstance(
+        args, RebookArgs | ClaimArgs | CustomsDocsArgs | ResolveArgs
+    ):
+        return (
+            f"declared value £{state.declared_value_gbp:,.0f} is at or above the "
+            f"£{policy.high_value_gbp:,.0f} high-value threshold: call escalate_to_human"
+        )
 
     if state.service_level is ServiceLevel.TEMPERATURE_CONTROLLED and isinstance(
         args, RebookArgs | ClaimArgs | CustomsDocsArgs | ResolveArgs

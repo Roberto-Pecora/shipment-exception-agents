@@ -18,8 +18,8 @@ Scripted model turns: these numbers measure routing, guardrails, policy enforcem
 | invalid_tool_calls | 2 |
 | escalation_rate | 0.379 |
 | cost_usd | 0.000 |
-| latency_p50_ms | 0.400 |
-| latency_p95_ms | 0.800 |
+| latency_p50_ms | 0.600 |
+| latency_p95_ms | 1.800 |
 
 ## Scenarios — hybrid
 
