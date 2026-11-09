@@ -133,14 +133,9 @@ Full table: [`evals/results/offline.md`](evals/results/offline.md).
 real model, comparing the hybrid router with an agent-only baseline on outcome accuracy,
 policy violations, model calls, cost and latency.
 
-This run predates eight hardening changes made after a design review (hard model-call
-deadline, stored agent outcomes, a write-ahead action journal, one case per shipment,
-escalated cases held for ops, a high-value guardrail, ingest conflict detection, claims
-filed through the gateway); those are verified by tests and the offline gate, not by a
-repeat live run.
-
 One model, `moonshotai/kimi-k3.1-pro` via OpenRouter: 30 scenarios (the two scripted-only
-failure cases are offline-only), one sample each, temperature 0, per-case budget $0.15
+failure cases are offline-only), one sample each, temperature 0, per-case budget $0.15,
+run on the current code, including the eight changes made after a design review
 (full table: [`evals/results/live-moonshotai_kimi-k3.1-pro.md`](evals/results/live-moonshotai_kimi-k3.1-pro.md)).
 
 | Metric | Hybrid (router + agent) | Agent only |
@@ -148,9 +143,10 @@ failure cases are offline-only), one sample each, temperature 0, per-case budget
 | Outcome accuracy | 1.000 (30/30) | 0.867 (26/30) |
 | Policy violations | 0 | 0 |
 | Duplicate notifications | 0 | 0 |
-| Model calls | 53 | 77 |
-| Cost (USD) | 0.161 | 0.242 |
-| Latency p50 / p95 (s) | 3.5 / 9.4 | 5.7 / 14.9 |
+| Model calls | 53 | 79 |
+| Guardrail blocks | 0 | 1 |
+| Cost (USD) | 0.170 | 0.259 |
+| Latency p50 / p95 (s) | 4.4 / 7.9 | 5.5 / 10.0 |
 
 How to read this:
 
@@ -161,13 +157,15 @@ How to read this:
   Exploratory runs on two other models showed the same misses (those results are not kept).
   I fixed the fixture and reran. This is one sample on 30 scenarios I revised after seeing
   the failures: it shows this model and the harness agree on these cases, not a benchmark.
-- **Agent-only misses.** It handled a £25,000 consignment with a customer notification
-  instead of escalating. The hybrid router sends that to a human by rule; at the time the
-  agent's guardrails did not cap declared value. They now do (high-value cases can only be
-  escalated), which would block that action; the live run has not been repeated since.
-  Two address-issue cases escalated because the agent
-  has no address-confirmation tool, which my expected outcomes arguably should allow, and a
-  24-hour delay was rebooked, which is defensible. The comparison favours the router by
+- **The high-value guardrail caught a real action.** In an earlier run (before that
+  guardrail existed) the agent-only baseline handled a £25,000 consignment with a customer
+  notification instead of escalating. In this run the model tried to rebook it onto air
+  express; the guardrail blocked the call and the model escalated, citing the block. The hybrid router never lets that case
+  reach the model.
+- **Agent-only misses.** It told the customer about a customs hold where no document was
+  missing, instead of escalating. Two address-issue cases escalated because the agent has no
+  address-confirmation tool, which my expected outcomes arguably should allow, and a 24-hour
+  delay was rebooked, which is defensible. The comparison favours the router by
   construction, since the scenarios were written around its rules.
 - **The temperature-controlled guardrail never fired live** (0 blocks): Kimi escalated
   those cases unprompted. It is verified offline only, by unit tests and a scripted
