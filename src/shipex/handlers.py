@@ -220,7 +220,7 @@ def notifier_handler(outbox: Outbox, cases: CaseRegistry) -> Handler:
                     f"Escalated by {e.source}: {e.reason}",
                 )
             )
-            cases.hold(e.case_id, e.reason)
+            cases.hold(e.case_id, e.reason, e.actions)
         else:
             raise PermanentError(f"notifier cannot handle {env.event_type}")
         return []

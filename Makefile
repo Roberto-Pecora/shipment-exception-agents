@@ -1,6 +1,6 @@
-.PHONY: install test check fmt typecheck eval eval-live failures gateway-test ci up down smoke
+.PHONY: install test check fmt typecheck eval eval-live failures gateway-test console-test api-types ci up down smoke
 install:
-	uv venv && uv pip install -e ".[dev]" && cd services/carrier-gateway && npm ci
+	uv venv && uv pip install -e ".[dev]" && cd services/carrier-gateway && npm ci && cd ../ops-console && npm ci
 test:
 	uv run pytest -q
 check:
@@ -17,7 +17,11 @@ failures:
 	uv run python evals/failure_suite.py
 gateway-test:
 	cd services/carrier-gateway && npm run typecheck && npm test
-ci: check typecheck test eval failures gateway-test
+console-test:
+	cd services/ops-console && npm run check:api && npm run typecheck && npm test
+api-types:  # after changing ops-api's models: regenerate the spec and the console's types
+	uv run python scripts/export_openapi.py && cd services/ops-console && npm run gen:api
+ci: check typecheck test eval failures gateway-test console-test
 up:
 	docker compose up -d --build
 down:

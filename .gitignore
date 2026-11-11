@@ -10,3 +10,4 @@ uv.lock
 *.egg-info/
 node_modules/
 services/carrier-gateway/dist/
+services/ops-console/dist/

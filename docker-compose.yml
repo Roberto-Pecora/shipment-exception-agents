@@ -84,6 +84,12 @@ services:
       uvicorn shipex.services.ops_api:app_from_env --factory --host 0.0.0.0 --port 8080
     ports: ["${OPS_PORT:-8082}:8080"]
 
+  ops-console:
+    build: services/ops-console
+    depends_on: [ops-api]
+    ports: ["${CONSOLE_PORT:-8083}:80"]
+    restart: unless-stopped
+
   router:
     <<: *python-service
     command: python -m shipex.services.worker router

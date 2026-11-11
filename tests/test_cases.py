@@ -65,6 +65,7 @@ def test_escalated_case_is_held_until_ops_releases_it(carrier: InMemoryCarrier) 
 
     held = ops.get(f"/v1/shipments/{SID}/case").json()
     assert held["status"] == "held" and "needs a specialist" in held["reason"]
+    assert ops.get("/v1/cases/held").json() == [held]
 
     # A later exception while ops holds the case: routed to humans, playbook not run.
     p.submit(make_event(carrier_event_id="evt-2", status_code=StatusCode.ADDRESS_ISSUE))
@@ -75,9 +76,29 @@ def test_escalated_case_is_held_until_ops_releases_it(carrier: InMemoryCarrier) 
     # Ops releases; the next exception is automated again.
     assert ops.post(f"/v1/cases/{held['case_id']}/release").status_code == 204
     assert ops.get(f"/v1/shipments/{SID}/case").status_code == 404
+    assert ops.get("/v1/cases/held").json() == []
     p.submit(make_event(carrier_event_id="evt-3", status_code=StatusCode.ADDRESS_ISSUE))
     p.drain()
     assert [n.channel for n in p.outbox.list()] == ["ops", "ops", "customer"]
+
+
+def test_held_case_shows_what_the_agent_already_did(carrier: InMemoryCarrier) -> None:
+    """Ops must see a rebook the agent made before escalating, or they may rebook again."""
+    script = [
+        ScriptedTurn(tool_calls=(("get_rebooking_options", {"shipment_id": SID}),)),
+        ScriptedTurn(
+            tool_calls=(("rebook_shipment", {"shipment_id": SID, "option_id": "opt-air"}),)
+        ),
+        ScriptedTurn(tool_calls=(("escalate_to_human", {"reason": "customer wants a call"}),)),
+    ]
+    p = InProcessPipeline(ShipmentExceptionAgent(ScriptedChat(script), carrier))
+    p.submit(make_event(carrier_event_id="evt-1", delay_hours=72.0))
+    p.drain()
+
+    [held] = TestClient(create_app(p.cases)).get("/v1/cases/held").json()
+    [action] = held["actions"]
+    assert action["kind"] == "rebook" and action["params"]["option_id"] == "opt-air"
+    assert action["external_ref"]  # the carrier's reference, for ops to look up
 
 
 def test_release_requires_a_held_case() -> None:
@@ -86,3 +107,15 @@ def test_release_requires_a_held_case() -> None:
     ops = TestClient(create_app(cases))
     assert ops.post("/v1/cases/c1/release").status_code == 404  # in progress, not held
     assert ops.post("/v1/cases/nope/release").status_code == 404
+
+
+def test_held_queue_lists_only_held_cases_oldest_first() -> None:
+    cases = InMemoryCaseRegistry()
+    cases.open("S1", "c1")
+    cases.open("S2", "c2")
+    cases.open("S3", "c3")
+    cases.hold("c3", "damaged")
+    cases.hold("c1", "customs")
+    queue = TestClient(create_app(cases)).get("/v1/cases/held").json()
+    assert [(c["case_id"], c["reason"]) for c in queue] == [("c1", "customs"), ("c3", "damaged")]
+    assert all(c["opened_at"] for c in queue)  # the console shows how long each has waited
