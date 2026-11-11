@@ -31,6 +31,8 @@ carrier webhook ─► ingest-api (FastAPI) ─► shipment.events.v1 ─► rou
                                     │ resolved: close case · escalated: hold for ops
                                     ▼
                                  ops-api ── a person releases held cases
+                                    ▲
+                                 ops-console (React) ── the ops queue in a browser
 
 every consumer: commit after publish · idempotent by event id · retries → <topic>.dlq
 traceparent in Kafka headers → one trace in Jaeger · Prometheus metrics per service
@@ -55,7 +57,8 @@ high-risk cases go to a human by rule (ADR 0002).
 | `agent` | Python | Bounded tool-calling loop via OpenRouter; guardrails and budgets; always emits resolved or escalated. |
 | `carrier-gateway` | TypeScript / Fastify + zod | Tracking, rebooking options, rebook, customs-document requests, claims. Idempotency keys enforced; fault injection. |
 | `notifier` | Python | Writes customer messages and ops tickets to an idempotent outbox; closes resolved cases and holds escalated ones for ops. |
-| `ops-api` | Python / FastAPI | Shows a shipment's open or held case and lets a person release a held case back to automation. |
+| `ops-api` | Python / FastAPI | Lists held cases, shows a shipment's open or held case, and lets a person release a held case back to automation. |
+| `ops-console` | TypeScript / React (Vite) | The ops queue in a browser: held cases with the reason they were escalated and what automation already did (so nobody rebooks twice), released back to automation after confirmation. Served by nginx, which proxies `/v1` to ops-api. |
 
 Infra: Redpanda (Kafka API), Postgres, Jaeger, Prometheus, all in `docker-compose.yml`.
 
@@ -175,15 +178,16 @@ How to read this:
 ## Quick start
 
 ```bash
-make install            # Python venv (uv) + gateway node_modules
-make ci                 # lint, mypy --strict, tests, eval gate, failure drills, gateway tests
+make install            # Python venv (uv) + gateway and console node_modules
+make ci                 # lint, mypy --strict, tests, eval gate, failure drills, gateway and console tests
 
 cp .env.example .env    # optional: OPENROUTER_API_KEY, AGENT_MODEL
-make up                 # Redpanda, Postgres, Jaeger, Prometheus, 7 services
+make up                 # Redpanda, Postgres, Jaeger, Prometheus, 8 services
 make smoke              # posts every scenario twice, waits for exactly one notification each
 ```
 
-Then open Jaeger at http://localhost:16686 (one trace per case, across services) and
+Then open the ops console at http://localhost:8083 (escalated cases waiting for a person),
+Jaeger at http://localhost:16686 (one trace per case, across services) and
 Prometheus at http://localhost:9090 (`shipex_routes_total`, `shipex_agent_outcomes_total`,
 `shipex_llm_cost_usd_total`, `shipex_dead_letters_total`). Without an API key the agent
 worker runs with no model and agent cases escalate to ops: the system degrades and does
@@ -202,14 +206,17 @@ src/shipex/
   pipeline.py           whole graph in-process (tests, evals)
   services/             ingest_api (FastAPI), worker (router|playbook|agent|notifier)
 services/carrier-gateway/   TypeScript service + vitest
+services/ops-console/       React ops queue over ops-api + vitest (`npm run dev` proxies to `make up`)
+                            types generated from ops-api's OpenAPI spec (`make api-types`)
 evals/                  scenarios, runner, failure drills, results
 docs/ARCHITECTURE.md    system map (services, events, delivery, agent, observability)
 docs/adr/               architecture decisions
 ```
 
-Tests are hermetic (no broker, database, key or network): 94 pytest tests and 10 vitest
-tests. CI runs ruff, `mypy --strict`, pytest with coverage, the offline eval gate, the
-failure drills, gateway typecheck/tests/build, and builds every image. The repo was built
+Tests are hermetic (no broker, database, key or network): 97 pytest tests and 27 vitest
+tests (10 gateway, 17 console). CI runs ruff, `mypy --strict`, pytest with coverage, the offline eval gate, the
+failure drills, gateway and console typecheck/tests/build, a check that the console's API
+types match ops-api, and builds every image. The repo was built
 with **Claude Code**; `CLAUDE.md` holds the rules agents and humans follow here, and
 `.github/pull_request_template.md` holds the review checklist.
 
